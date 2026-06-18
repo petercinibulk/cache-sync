@@ -1,0 +1,68 @@
+[project]
+name = "hybrid-cache"
+version = "0.1.0"
+description = "Async hybrid Python cache with in-memory L1, Redis L2, Redis Streams invalidation, stampede protection, and typed decorators."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Peter Cinibulk" }
+]
+dependencies = [
+  "redis>=5.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.5.0",
+  "ty>=0.0.1a8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "ASYNC",
+  "B",
+  "C4",
+  "E",
+  "F",
+  "I",
+  "N",
+  "PERF",
+  "RUF",
+  "SIM",
+  "UP",
+  "W",
+]
+ignore = [
+  "B904",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ty.environment]
+python-version = "3.12"
+python-platform = "all"
+
+[tool.ty.src]
+root = "./src"
