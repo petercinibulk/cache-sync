@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TypeVar, cast
 
 from hybrid_cache.distributed_cache import DistributedCache
-from hybrid_cache.invalidator import Invalidator
+from hybrid_cache.invalidation import InvalidationBus
 
 T = TypeVar("T")
 
@@ -41,27 +41,27 @@ class HybridCache:
         self,
         *,
         distributed_cache: DistributedCache | None = None,
-        invalidator: Invalidator | None = None,
+        invalidation_bus: InvalidationBus | None = None,
         options: CacheOptions | None = None,
     ) -> None:
         self._memory: dict[str, CacheEntry] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._distributed_cache = distributed_cache
-        self._invalidator = invalidator
+        self._invalidation_bus = invalidation_bus
         self._options = options or CacheOptions()
 
     async def start(self) -> None:
-        if self._invalidator is None:
+        if self._invalidation_bus is None:
             return
 
-        await self._invalidator.start(
+        await self._invalidation_bus.start(
             remove_local=self.remove_local,
             clear_local=self.clear_memory,
         )
 
     async def stop(self) -> None:
-        if self._invalidator is not None:
-            await self._invalidator.stop()
+        if self._invalidation_bus is not None:
+            await self._invalidation_bus.stop()
 
     async def get_or_set(
         self,
@@ -121,8 +121,8 @@ class HybridCache:
                 ttl_seconds=self._ttl_with_jitter(opts),
             )
 
-        if publish_invalidation and self._invalidator is not None:
-            await self._invalidator.invalidate(key)
+        if publish_invalidation and self._invalidation_bus is not None:
+            await self._invalidation_bus.invalidate(key)
 
     async def remove(self, key: str) -> None:
         self.remove_local(key)
@@ -130,14 +130,14 @@ class HybridCache:
         if self._distributed_cache is not None:
             await self._distributed_cache.delete(key)
 
-        if self._invalidator is not None:
-            await self._invalidator.invalidate(key)
+        if self._invalidation_bus is not None:
+            await self._invalidation_bus.invalidate(key)
 
     async def clear(self) -> None:
         self.clear_memory()
 
-        if self._invalidator is not None:
-            await self._invalidator.clear()
+        if self._invalidation_bus is not None:
+            await self._invalidation_bus.clear()
 
     def remove_local(self, key: str) -> None:
         self._memory.pop(key, None)

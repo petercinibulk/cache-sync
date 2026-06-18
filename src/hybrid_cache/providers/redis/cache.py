@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from redis.asyncio import Redis
 
-from hybrid_cache.distributed_cache import PickleSerializer, Serializer
+from hybrid_cache.serializers import PickleSerializer, Serializer
 
 
 class RedisDistributedCache:

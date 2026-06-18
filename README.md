@@ -1,6 +1,6 @@
 # hybrid-cache
 
-Async hybrid Python cache with in-memory L1 caching, optional Redis L2 caching, pluggable invalidation, Redis Streams support, stampede protection, fail-safe stale values, and typed decorators.
+Async hybrid Python cache with in-memory L1 caching, optional distributed L2 caching, pluggable invalidation, Redis Streams support, stampede protection, fail-safe stale values, and typed decorators.
 
 ## Development
 
@@ -13,6 +13,16 @@ uv run pytest
 uv build --no-sources
 ```
 
+## Optional Providers
+
+```bash
+uv add "hybrid-cache[redis]"
+uv add "hybrid-cache[rabbitmq]"
+uv add "hybrid-cache[kafka]"
+uv add "hybrid-cache[postgres]"
+uv add "hybrid-cache[all]"
+```
+
 ## Usage
 
 ```python
@@ -22,14 +32,14 @@ from hybrid_cache import (
     CacheOptions,
     HybridCache,
     RedisDistributedCache,
-    RedisInvalidator,
+    RedisStreamsInvalidationBus,
     cached,
 )
 
 redis = Redis.from_url("redis://localhost:6379/0", decode_responses=False)
 cache = HybridCache(
     distributed_cache=RedisDistributedCache(redis),
-    invalidator=RedisInvalidator(redis),
+    invalidation_bus=RedisStreamsInvalidationBus(redis),
     options=CacheOptions(
         ttl_seconds=60,
         fail_safe_seconds=300,
@@ -54,14 +64,24 @@ await cache.stop()
 ## Architecture
 
 ```text
-HybridCache -> Invalidator -> Backplane
+HybridCache
+|- optional DistributedCache
+`- optional InvalidationBus
 ```
 
-- `Backplane` transports `BackplaneMessage` instances between nodes.
-- `Invalidator` publishes cache invalidations and applies received messages to the local L1 cache.
-- `BackplaneInvalidator` works with any `Backplane` implementation.
-- `RedisStreamsBackplane` implements the transport with Redis Streams.
-- `RedisInvalidator` combines `BackplaneInvalidator` with `RedisStreamsBackplane`.
+- `DistributedCache` stores shared L2 values. Redis is one implementation.
+- `InvalidationBus` publishes cache invalidations and applies received messages to the local L1 cache.
+- `RedisStreamsInvalidationBus` implements Redis Streams invalidation directly.
+- The two axes are independent: an invalidation bus can be used without a distributed cache, and any invalidation bus can be paired with any distributed cache.
+
+| Provider | Distributed cache | Invalidation bus |
+| --- | --- | --- |
+| Redis | `RedisDistributedCache` | `RedisStreamsInvalidationBus` |
+| RabbitMQ | - | `RabbitMQInvalidationBus` |
+| Kafka | - | `KafkaInvalidationBus` |
+| PostgreSQL | - | `PostgresNotifyInvalidationBus` |
+
+Kafka invalidation uses a unique consumer group per node by default so every cache instance receives every invalidation. Sharing a Kafka consumer group between cache instances load-balances messages and is not appropriate for cache invalidation.
 
 Reads follow this order:
 

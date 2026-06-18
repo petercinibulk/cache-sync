@@ -1,21 +1,9 @@
 from __future__ import annotations
 
-import pickle
 from typing import Protocol
 
-
-class Serializer(Protocol):
-    def dumps(self, value: object) -> bytes: ...
-
-    def loads(self, value: bytes) -> object: ...
-
-
-class PickleSerializer:
-    def dumps(self, value: object) -> bytes:
-        return pickle.dumps(value)
-
-    def loads(self, value: bytes) -> object:
-        return pickle.loads(value)
+from hybrid_cache.serializers import PickleSerializer as PickleSerializer
+from hybrid_cache.serializers import Serializer as Serializer
 
 
 class DistributedCache(Protocol):

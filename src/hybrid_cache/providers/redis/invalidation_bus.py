@@ -11,14 +11,19 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 from redis.typing import EncodableT, FieldT
 
-from hybrid_cache.backplane import BackplaneAction, BackplaneHandler, BackplaneMessage
+from hybrid_cache.invalidation import (
+    ClearLocal,
+    InvalidationAction,
+    InvalidationMessage,
+    RemoveLocal,
+)
 
 type RedisFields = Mapping[bytes | str, bytes | str]
 type RedisMessage = tuple[bytes | str, RedisFields]
 type RedisStreamResponse = list[tuple[bytes | str, list[RedisMessage]]]
 
 
-class RedisStreamsBackplane:
+class RedisStreamsInvalidationBus:
     def __init__(
         self,
         redis: Redis,
@@ -34,15 +39,22 @@ class RedisStreamsBackplane:
         self._group_name = f"hybrid-cache-node:{self._node_name}"
         self._consumer_name = self._node_name
         self._max_length = max_length
-        self._handler: BackplaneHandler | None = None
+        self._remove_local: RemoveLocal | None = None
+        self._clear_local: ClearLocal | None = None
         self._listener_task: asyncio.Task[None] | None = None
         self._stopped = asyncio.Event()
 
-    async def start(self, handler: BackplaneHandler) -> None:
+    async def start(
+        self,
+        *,
+        remove_local: RemoveLocal,
+        clear_local: ClearLocal,
+    ) -> None:
         if self._listener_task is not None:
             return
 
-        self._handler = handler
+        self._remove_local = remove_local
+        self._clear_local = clear_local
         self._stopped.clear()
         await self._ensure_group()
         self._listener_task = asyncio.create_task(self._listen())
@@ -59,9 +71,16 @@ class RedisStreamsBackplane:
             await self._listener_task
 
         self._listener_task = None
-        self._handler = None
+        self._remove_local = None
+        self._clear_local = None
 
-    async def publish(self, message: BackplaneMessage) -> None:
+    async def invalidate(self, key: str) -> None:
+        await self._publish(InvalidationMessage.remove(key))
+
+    async def clear(self) -> None:
+        await self._publish(InvalidationMessage.clear())
+
+    async def _publish(self, message: InvalidationMessage) -> None:
         fields: dict[FieldT, EncodableT] = {
             "action": message.action,
             "source_id": self._source_id,
@@ -114,9 +133,7 @@ class RedisStreamsBackplane:
         source_id = self._get_field(fields, "source_id")
 
         if source_id != self._source_id:
-            handler = self._handler
-            if handler is not None:
-                await handler(self._to_message(fields))
+            self._apply_message(self._to_message(fields))
 
         await self._redis.xack(
             self._stream_name,
@@ -124,13 +141,25 @@ class RedisStreamsBackplane:
             message_id,
         )
 
-    def _to_message(self, fields: RedisFields) -> BackplaneMessage:
-        action = cast(BackplaneAction, self._get_field(fields, "action"))
+    def _apply_message(self, message: InvalidationMessage) -> None:
+        if message.action == "remove" and message.key is not None:
+            remove_local = self._remove_local
+            if remove_local is not None:
+                remove_local(message.key)
+            return
+
+        if message.action == "clear":
+            clear_local = self._clear_local
+            if clear_local is not None:
+                clear_local()
+
+    def _to_message(self, fields: RedisFields) -> InvalidationMessage:
+        action = cast(InvalidationAction, self._get_field(fields, "action"))
 
         if action == "remove":
-            return BackplaneMessage.remove(self._get_field(fields, "key"))
+            return InvalidationMessage.remove(self._get_field(fields, "key"))
 
-        return BackplaneMessage.clear()
+        return InvalidationMessage.clear()
 
     def _get_field(self, fields: RedisFields, key: str) -> str:
         value = fields.get(key)

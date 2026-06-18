@@ -1,25 +1,79 @@
-from hybrid_cache.backplane import Backplane, BackplaneMessage
+from typing import TYPE_CHECKING, Any
+
 from hybrid_cache.core import CacheOptions, HybridCache
 from hybrid_cache.decorators import CachedFunction, cached
-from hybrid_cache.distributed_cache import DistributedCache, PickleSerializer, Serializer
-from hybrid_cache.invalidator import BackplaneInvalidator, Invalidator
-from hybrid_cache.redis_cache import RedisDistributedCache
-from hybrid_cache.redis_invalidator import RedisInvalidator
-from hybrid_cache.redis_streams_backplane import RedisStreamsBackplane
+from hybrid_cache.distributed_cache import DistributedCache
+from hybrid_cache.invalidation import (
+    InvalidationBus,
+    InvalidationHandler,
+    InvalidationMessage,
+    InvalidationTransport,
+    TransportInvalidationBus,
+)
+from hybrid_cache.serializers import (
+    JsonSerializer,
+    PickleSerializer,
+    PydanticSerializer,
+    Serializer,
+)
+
+if TYPE_CHECKING:
+    from hybrid_cache.providers.kafka import KafkaInvalidationBus
+    from hybrid_cache.providers.postgres import PostgresNotifyInvalidationBus
+    from hybrid_cache.providers.rabbitmq import RabbitMQInvalidationBus
+    from hybrid_cache.providers.redis import (
+        RedisDistributedCache,
+        RedisStreamsInvalidationBus,
+    )
 
 __all__ = [
-    "Backplane",
-    "BackplaneInvalidator",
-    "BackplaneMessage",
     "CacheOptions",
     "CachedFunction",
     "DistributedCache",
     "HybridCache",
-    "Invalidator",
+    "InvalidationBus",
+    "InvalidationHandler",
+    "InvalidationMessage",
+    "InvalidationTransport",
+    "JsonSerializer",
+    "KafkaInvalidationBus",
     "PickleSerializer",
+    "PostgresNotifyInvalidationBus",
+    "PydanticSerializer",
+    "RabbitMQInvalidationBus",
     "RedisDistributedCache",
-    "RedisInvalidator",
-    "RedisStreamsBackplane",
+    "RedisStreamsInvalidationBus",
     "Serializer",
+    "TransportInvalidationBus",
     "cached",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    if name == "RedisDistributedCache":
+        from hybrid_cache.providers.redis import RedisDistributedCache
+
+        return RedisDistributedCache
+
+    if name == "RedisStreamsInvalidationBus":
+        from hybrid_cache.providers.redis import RedisStreamsInvalidationBus
+
+        return RedisStreamsInvalidationBus
+
+    if name == "RabbitMQInvalidationBus":
+        from hybrid_cache.providers.rabbitmq import RabbitMQInvalidationBus
+
+        return RabbitMQInvalidationBus
+
+    if name == "KafkaInvalidationBus":
+        from hybrid_cache.providers.kafka import KafkaInvalidationBus
+
+        return KafkaInvalidationBus
+
+    if name == "PostgresNotifyInvalidationBus":
+        from hybrid_cache.providers.postgres import PostgresNotifyInvalidationBus
+
+        return PostgresNotifyInvalidationBus
+
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
