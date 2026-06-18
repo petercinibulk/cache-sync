@@ -189,3 +189,33 @@ async def test_decorator_preserves_return_type_and_remove_cached() -> None:
     assert third == {"id": "123"}
     assert calls == 2
     assert get_user.cache_key("123") == "user:123"
+
+
+@pytest.mark.asyncio
+async def test_decorator_defaults_to_function_arguments_cache_key() -> None:
+    cache = HybridCache(options=CacheOptions(ttl_seconds=60))
+    calls = 0
+
+    @cached(cache)
+    async def get_user(user_id: str, *, include_disabled: bool = False) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {
+            "call": calls,
+            "include_disabled": include_disabled,
+            "user_id": user_id,
+        }
+
+    first = await get_user("123")
+    second = await get_user("123")
+    explicit_default = await get_user("123", include_disabled=False)
+    different_kwargs = await get_user(user_id="123", include_disabled=True)
+    same_kwargs = await get_user(include_disabled=True, user_id="123")
+    await get_user.remove_cached(user_id="123", include_disabled=True)
+    refreshed = await get_user("123", include_disabled=True)
+
+    assert first == second == explicit_default
+    assert different_kwargs == same_kwargs
+    assert refreshed["call"] == 3
+    assert calls == 3
+    assert get_user.cache_key("123").endswith("get_user(user_id='123',include_disabled=False)")
