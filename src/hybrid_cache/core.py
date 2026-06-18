@@ -6,7 +6,8 @@ import random
 import socket
 import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import update_wrapper
 from typing import Generic, ParamSpec, Protocol, TypeVar, cast, runtime_checkable
@@ -147,12 +148,10 @@ class HybridCache:
 
         self._listener_task.cancel()
 
-        try:
+        with suppress(asyncio.CancelledError):
             await self._listener_task
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self._listener_task = None
+
+        self._listener_task = None
 
     async def get_or_set(
         self,
@@ -252,7 +251,12 @@ class HybridCache:
 
         return opts.ttl_seconds + random.uniform(0, opts.jitter_seconds)
 
-    async def _publish_invalidation(self, event_type: str, *, key: str | None = None) -> None:
+    async def _publish_invalidation(
+        self,
+        event_type: str,
+        *,
+        key: str | None = None,
+    ) -> None:
         if self._redis is None:
             return
 
@@ -301,36 +305,43 @@ class HybridCache:
 
             for _, messages in response:
                 for message_id, fields in messages:
-                    try:
-                        self._handle_invalidation(fields)
-                        await self._redis.xack(
-                            self._invalidation_stream,
-                            self._group_name,
-                            message_id,
-                        )
-                    except Exception:
-                        pass
+                    await self._process_invalidation(message_id, fields)
 
-    def _handle_invalidation(self, fields: dict[bytes, bytes] | dict[str, str]) -> None:
-        event_type = self._decode(fields[self._field_key(fields, "type")])
-        node_id = self._decode(fields[self._field_key(fields, "node_id")])
+    async def _process_invalidation(
+        self,
+        message_id: bytes | str,
+        fields: Mapping[bytes | str, bytes | str],
+    ) -> None:
+        if self._redis is None:
+            return
+
+        try:
+            self._handle_invalidation(fields)
+            await self._redis.xack(
+                self._invalidation_stream,
+                self._group_name,
+                message_id,
+            )
+        except Exception:
+            return
+
+    def _handle_invalidation(self, fields: Mapping[bytes | str, bytes | str]) -> None:
+        event_type = self._get_field(fields, "type")
+        node_id = self._get_field(fields, "node_id")
 
         if node_id == self._node_id:
             return
 
         if event_type == "remove":
-            key = self._decode(fields[self._field_key(fields, "key")])
-            self.remove_local(key)
+            self.remove_local(self._get_field(fields, "key"))
         elif event_type == "clear":
             self.clear_memory()
 
-    def _field_key(self, fields: dict[bytes, bytes] | dict[str, str], key: str) -> bytes | str:
-        bytes_key = key.encode("utf-8")
-        if bytes_key in fields:
-            return bytes_key
-        return key
+    def _get_field(self, fields: Mapping[bytes | str, bytes | str], key: str) -> str:
+        value = fields.get(key)
+        if value is None:
+            value = fields[key.encode("utf-8")]
 
-    def _decode(self, value: bytes | str) -> str:
         return value.decode("utf-8") if isinstance(value, bytes) else value
 
 
