@@ -9,20 +9,18 @@ import uuid
 from collections.abc import Awaitable, Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
-from functools import update_wrapper
-from typing import Generic, ParamSpec, Protocol, TypeVar, cast, runtime_checkable
+from typing import Any, Generic, ParamSpec, Protocol, TypeAlias, TypeVar, cast, overload
 
 from redis.asyncio import Redis
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
-RedisFields = Mapping[bytes | str, bytes | str]
-RedisMessage = tuple[bytes | str, RedisFields]
-RedisStreamResponse = list[tuple[bytes | str, list[RedisMessage]]]
+RedisFields: TypeAlias = Mapping[bytes | str, bytes | str]
+RedisMessage: TypeAlias = tuple[bytes | str, RedisFields]
+RedisStreamResponse: TypeAlias = list[tuple[bytes | str, list[RedisMessage]]]
 
 
-@runtime_checkable
 class Serializer(Protocol):
     def dumps(self, value: object) -> bytes: ...
     def loads(self, value: bytes) -> object: ...
@@ -36,7 +34,6 @@ class PickleSerializer:
         return pickle.loads(value)
 
 
-@runtime_checkable
 class DistributedCache(Protocol):
     async def get(self, key: str) -> object | None: ...
     async def set(self, key: str, value: object, ttl_seconds: float) -> None: ...
@@ -358,15 +355,16 @@ class CachedFunction(Generic[P, T]):
         *,
         cache: HybridCache,
         func: Callable[P, Awaitable[T]],
-        key: str | Callable[P, str],
+        key: str | Callable[..., str],
         options: CacheOptions | None,
     ) -> None:
         self._cache = cache
         self._func = func
         self._key = key
         self._options = options
-
-        update_wrapper(self, func)
+        self.__name__ = func.__name__
+        self.__doc__ = func.__doc__
+        self.__module__ = func.__module__
 
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         cache_key = self.cache_key(*args, **kwargs)
@@ -387,9 +385,27 @@ class CachedFunction(Generic[P, T]):
         return self._key(*args, **kwargs)
 
 
+@overload
 def cached(
     cache: HybridCache,
-    key: str | Callable[P, str],
+    key: str,
+    *,
+    options: CacheOptions | None = None,
+) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]: ...
+
+
+@overload
+def cached(
+    cache: HybridCache,
+    key: Callable[..., str],
+    *,
+    options: CacheOptions | None = None,
+) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]: ...
+
+
+def cached(
+    cache: HybridCache,
+    key: str | Callable[..., str],
     *,
     options: CacheOptions | None = None,
 ) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]:
