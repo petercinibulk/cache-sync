@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 type BackplaneAction = Literal["remove", "clear"]
-type BackplaneHandler = Callable[["BackplaneMessage"], Awaitable[None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +19,9 @@ class BackplaneMessage:
     @classmethod
     def clear(cls) -> BackplaneMessage:
         return cls(action="clear")
+
+
+type BackplaneHandler = Callable[[BackplaneMessage], Awaitable[None]]
 
 
 class Backplane(Protocol):
