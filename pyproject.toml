@@ -1,6 +1,6 @@
 [project]
 name = "hybrid-cache"
-version = "0.1.0"
+version = "0.2.0"
 description = "Async hybrid Python cache with in-memory L1, distributed L2 providers, pluggable invalidation, stampede protection, and typed decorators."
 readme = "README.md"
 requires-python = ">=3.12"
