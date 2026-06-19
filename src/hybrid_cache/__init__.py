@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Any
 
 from hybrid_cache.core import CacheOptions, HybridCache
-from hybrid_cache.decorators import CachedFunction, cached
+from hybrid_cache.decorators import CachedFunction
 from hybrid_cache.distributed_cache import DistributedCache
 from hybrid_cache.invalidation import (
     InvalidationBus,
@@ -47,7 +47,6 @@ __all__ = [
     "RedisStreamsInvalidationBus",
     "Serializer",
     "TransportInvalidationBus",
-    "cached",
 ]
 
 

@@ -3,7 +3,7 @@
 Import these names from `hybrid_cache` for normal application use.
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache, cached
+from hybrid_cache import CacheOptions, HybridCache
 ```
 
 ## Cache
@@ -12,8 +12,8 @@ from hybrid_cache import CacheOptions, HybridCache, cached
 | --- | --- |
 | `HybridCache` | Coordinates local memory, optional distributed storage, invalidation, and lifecycle. |
 | `CacheOptions` | Configures TTL, stale reads, timeouts, jitter, and caching of `None` values. |
-| `cached` | Decorates an async function and adds cache lookup, set, and removal behavior. |
-| `CachedFunction` | Protocol for decorated functions with `remove_cached` and `clear_cached` helpers. |
+| `HybridCache.cached` | Decorates an async function and adds cache lookup, set, and removal behavior. |
+| `CachedFunction` | Wrapper for decorated functions with `remove_cached` and `cache_key` helpers. |
 | `DistributedCache` | Protocol implemented by shared cache providers such as Redis. |
 
 ## Invalidation

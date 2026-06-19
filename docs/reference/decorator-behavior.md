@@ -1,6 +1,6 @@
 # Decorator Behavior
 
-`cached(cache, key=None, *, options=None)` wraps an async function and returns a callable object with cache helpers.
+`cache.cached(key=None, *, options=None)` wraps an async function and returns a callable object with cache helpers.
 
 ## Key behavior
 
@@ -23,7 +23,7 @@
 Default keys include the function module, qualified name, and arguments. For stable operational keys, prefer an explicit callable:
 
 ```python
-@cached(cache, lambda user_id: f"user:{user_id}")
+@cache.cached(lambda user_id: f"user:{user_id}")
 async def get_user(user_id: str) -> dict[str, str]:
     ...
 ```

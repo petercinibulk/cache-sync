@@ -20,11 +20,10 @@ cache = HybridCache(
 ## Override policy for one cached function
 
 ```python
-from hybrid_cache import CacheOptions, cached
+from hybrid_cache import CacheOptions
 
 
-@cached(
-    cache,
+@cache.cached(
     lambda product_id: f"product:{product_id}",
     options=CacheOptions(ttl_seconds=30, fail_safe_seconds=300),
 )

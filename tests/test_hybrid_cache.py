@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from hybrid_cache import CacheOptions, HybridCache, cached
+from hybrid_cache import CacheOptions, HybridCache
 from hybrid_cache.invalidation import ClearLocal, RemoveLocal
 
 
@@ -173,7 +173,7 @@ async def test_decorator_preserves_return_type_and_remove_cached() -> None:
     cache = HybridCache(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
-    @cached(cache, lambda user_id: f"user:{user_id}")
+    @cache.cached(lambda user_id: f"user:{user_id}")
     async def get_user(user_id: str) -> dict[str, str]:
         nonlocal calls
         calls += 1
@@ -196,7 +196,7 @@ async def test_decorator_defaults_to_function_arguments_cache_key() -> None:
     cache = HybridCache(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
-    @cached(cache)
+    @cache.cached()
     async def get_user(user_id: str, *, include_disabled: bool = False) -> dict[str, object]:
         nonlocal calls
         calls += 1

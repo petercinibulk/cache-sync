@@ -44,7 +44,7 @@ uv add "hybrid-cache[all]"
 ## Quick Start
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache, cached
+from hybrid_cache import CacheOptions, HybridCache
 
 cache = HybridCache(
     options=CacheOptions(
@@ -58,7 +58,7 @@ cache = HybridCache(
 await cache.start()
 
 
-@cached(cache, lambda user_id: f"user:{user_id}")
+@cache.cached(lambda user_id: f"user:{user_id}")
 async def get_user(user_id: str) -> dict[str, str]:
     return {"id": user_id, "name": "Peter"}
 
@@ -73,7 +73,7 @@ await cache.stop()
 ```python
 from redis.asyncio import Redis
 
-from hybrid_cache import CacheOptions, HybridCache, RedisDistributedCache, cached
+from hybrid_cache import CacheOptions, HybridCache, RedisDistributedCache
 
 redis = Redis.from_url("redis://localhost:6379/0")
 
@@ -85,7 +85,7 @@ cache = HybridCache(
 await cache.start()
 
 
-@cached(cache, lambda product_id: f"product:{product_id}")
+@cache.cached(lambda product_id: f"product:{product_id}")
 async def get_product(product_id: str) -> dict[str, str]:
     return {"id": product_id}
 ```

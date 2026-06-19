@@ -15,10 +15,10 @@ Pass options to the cache for global defaults:
 cache = HybridCache(options=CacheOptions(ttl_seconds=120))
 ```
 
-Pass options to `@cached` for one function:
+Pass options to `@cache.cached` for one function:
 
 ```python
-@cached(cache, options=CacheOptions(ttl_seconds=30))
+@cache.cached(options=CacheOptions(ttl_seconds=30))
 async def load_value() -> str:
     ...
 ```

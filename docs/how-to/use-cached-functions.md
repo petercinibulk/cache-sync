@@ -1,14 +1,16 @@
 # Use Cached Functions
 
-Use `@cached(cache)` on async functions whose return value can be reused for the same inputs.
+Use `@cache.cached()` on async functions whose return value can be reused for the same inputs.
 
 ## Use the default key
 
 ```python
-from hybrid_cache import cached
+from hybrid_cache import HybridCache
+
+cache = HybridCache()
 
 
-@cached(cache)
+@cache.cached()
 async def get_settings(tenant_id: str) -> dict[str, str]:
     ...
 ```
@@ -18,7 +20,7 @@ When no key is supplied, `Hybrid-Cache` builds one from the function module, qua
 ## Use a custom key
 
 ```python
-@cached(cache, lambda tenant_id: f"settings:{tenant_id}")
+@cache.cached(lambda tenant_id: f"settings:{tenant_id}")
 async def get_settings(tenant_id: str) -> dict[str, str]:
     ...
 ```
@@ -28,7 +30,7 @@ A custom key is easier to share with explicit invalidation calls and easier to i
 ## Share one key across calls
 
 ```python
-@cached(cache, "global-settings")
+@cache.cached("global-settings")
 async def get_global_settings() -> dict[str, str]:
     ...
 ```

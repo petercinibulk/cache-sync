@@ -5,12 +5,16 @@ import random
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import TypeVar, cast
+from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
 from hybrid_cache.distributed_cache import DistributedCache
 from hybrid_cache.invalidation import InvalidationBus
 
 T = TypeVar("T")
+P = ParamSpec("P")
+
+if TYPE_CHECKING:
+    from hybrid_cache.decorators import CachedFunction
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +78,21 @@ class HybridCache:
 
         if self._invalidation_bus is not None:
             await self._invalidation_bus.stop()
+
+    def cached(
+        self,
+        key: str | Callable[..., str] | None = None,
+        *,
+        options: CacheOptions | None = None,
+    ) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]:
+        """Decorate an async function using this cache instance."""
+
+        from hybrid_cache.decorators import CachedFunction
+
+        def decorator(func: Callable[P, Awaitable[T]]) -> CachedFunction[P, T]:
+            return CachedFunction(self, func, key, options)
+
+        return decorator
 
     async def get_or_set(
         self,

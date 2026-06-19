@@ -11,7 +11,7 @@ uv add hybrid-cache
 ## Create an in-memory cache
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache, cached
+from hybrid_cache import CacheOptions, HybridCache
 
 cache = HybridCache(
     options=CacheOptions(
@@ -28,7 +28,7 @@ await cache.start()
 ## Cache an async function
 
 ```python
-@cached(cache, lambda user_id: f"user:{user_id}")
+@cache.cached(lambda user_id: f"user:{user_id}")
 async def get_user(user_id: str) -> dict[str, str]:
     return {"id": user_id, "name": "Peter"}
 
@@ -64,7 +64,6 @@ from hybrid_cache import (
     HybridCache,
     RedisDistributedCache,
     RedisStreamsInvalidationBus,
-    cached,
 )
 
 redis = Redis.from_url("redis://localhost:6379/0", decode_responses=False)

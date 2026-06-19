@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Awaitable, Callable
-from typing import Any, Generic, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, ParamSpec, TypeVar
 
-from hybrid_cache.core import CacheOptions, HybridCache
+from hybrid_cache.core import CacheOptions
+
+if TYPE_CHECKING:
+    from hybrid_cache.core import HybridCache
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
 
 class CachedFunction(Generic[P, T]):
-    """Callable wrapper returned by `cached` with cache-management helpers."""
+    """Callable wrapper returned by `HybridCache.cached` with cache helpers."""
 
     def __init__(
         self,
@@ -47,25 +50,6 @@ class CachedFunction(Generic[P, T]):
         if self._key is None:
             return default_cache_key(self._func, *args, **kwargs)
         return self._key(*args, **kwargs)
-
-
-def cached(
-    cache: HybridCache,
-    key: str | Callable[..., str] | None = None,
-    *,
-    options: CacheOptions | None = None,
-) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]:
-    """Cache an async function using `HybridCache`.
-
-    When `key` is omitted, the key is built from the wrapped function's module,
-    qualified name, and bound arguments. Pass a string or callable to override
-    that default key shape.
-    """
-
-    def decorator(func: Callable[P, Awaitable[T]]) -> CachedFunction[P, T]:
-        return CachedFunction(cache, func, key, options)
-
-    return decorator
 
 
 def default_cache_key(func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any) -> str:
