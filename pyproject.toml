@@ -28,6 +28,7 @@ rabbitmq = ["aio-pika>=9.0.0"]
 kafka = ["aiokafka>=0.10.0"]
 postgres = ["asyncpg>=0.29.0"]
 pydantic = ["pydantic>=1.10.0"]
+docs = ["zensical>=0.0.45"]
 all = [
   { include-group = "redis" },
   { include-group = "rabbitmq" },
@@ -37,6 +38,7 @@ all = [
 ]
 dev = [
   { include-group = "all" },
+  { include-group = "docs" },
   "pytest>=8.0.0",
   "pytest-asyncio>=0.23.0",
   "pytest-cov>=7.1.0",

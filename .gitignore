@@ -17,6 +17,7 @@ venv/
 # Build artifacts
 build/
 dist/
+site/
 *.egg-info/
 
 # Editors
@@ -26,3 +27,5 @@ dist/
 
 # uv
 uv.lock
+
+.cache
