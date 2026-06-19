@@ -15,6 +15,8 @@ T = TypeVar("T")
 
 @dataclass(frozen=True, slots=True)
 class CacheOptions:
+    """Runtime policy for cache freshness, factory timeouts, and TTL jitter."""
+
     ttl_seconds: float = 60
     fail_safe_seconds: float = 300
     hard_timeout_seconds: float = 5
@@ -23,6 +25,8 @@ class CacheOptions:
 
 @dataclass(slots=True)
 class CacheEntry:
+    """In-memory cache entry with freshness and fail-safe deadlines."""
+
     value: object
     expires_at: float
     fail_safe_until: float
@@ -37,6 +41,8 @@ class CacheEntry:
 
 
 class HybridCache:
+    """Async two-level cache with optional distributed storage and invalidation."""
+
     def __init__(
         self,
         *,
@@ -44,6 +50,8 @@ class HybridCache:
         invalidation_bus: InvalidationBus | None = None,
         options: CacheOptions | None = None,
     ) -> None:
+        """Create a cache using optional L2 storage and invalidation providers."""
+
         self._memory: dict[str, CacheEntry] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._distributed_cache = distributed_cache
@@ -51,6 +59,8 @@ class HybridCache:
         self._options = options or CacheOptions()
 
     async def start(self) -> None:
+        """Start the configured invalidation bus, if any."""
+
         if self._invalidation_bus is None:
             return
 
@@ -60,6 +70,8 @@ class HybridCache:
         )
 
     async def stop(self) -> None:
+        """Stop the configured invalidation bus, if any."""
+
         if self._invalidation_bus is not None:
             await self._invalidation_bus.stop()
 
@@ -70,6 +82,8 @@ class HybridCache:
         *,
         options: CacheOptions | None = None,
     ) -> T:
+        """Return a cached value or compute, store, and return a new value."""
+
         opts = options or self._options
         entry = self._memory.get(key)
 
@@ -111,6 +125,8 @@ class HybridCache:
         options: CacheOptions | None = None,
         publish_invalidation: bool = True,
     ) -> None:
+        """Store a value in local memory and optional distributed storage."""
+
         opts = options or self._options
         self._set_memory(key, value, opts)
 
@@ -125,6 +141,8 @@ class HybridCache:
             await self._invalidation_bus.invalidate(key)
 
     async def remove(self, key: str) -> None:
+        """Remove a key locally, from distributed storage, and from peer nodes."""
+
         self.remove_local(key)
 
         if self._distributed_cache is not None:
@@ -134,15 +152,21 @@ class HybridCache:
             await self._invalidation_bus.invalidate(key)
 
     async def clear(self) -> None:
+        """Clear all local entries and publish a clear message to peer nodes."""
+
         self.clear_memory()
 
         if self._invalidation_bus is not None:
             await self._invalidation_bus.clear()
 
     def remove_local(self, key: str) -> None:
+        """Remove a key from only this process's in-memory cache."""
+
         self._memory.pop(key, None)
 
     def clear_memory(self) -> None:
+        """Clear only this process's in-memory cache."""
+
         self._memory.clear()
 
     def _set_memory(self, key: str, value: object, opts: CacheOptions) -> None:

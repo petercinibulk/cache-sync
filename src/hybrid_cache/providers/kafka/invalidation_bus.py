@@ -16,6 +16,8 @@ from hybrid_cache.invalidation import (
 
 
 class KafkaInvalidationBus:
+    """Invalidation bus backed by a Kafka topic."""
+
     def __init__(
         self,
         *,
@@ -24,6 +26,13 @@ class KafkaInvalidationBus:
         node_name: str | None = None,
         group_id: str | None = None,
     ) -> None:
+        """Create a Kafka invalidation bus.
+
+        By default, each node gets a unique consumer group so every node receives
+        every invalidation. Supplying the same `group_id` for multiple nodes will
+        load-balance messages and is usually wrong for cache invalidation.
+        """
+
         self._bootstrap_servers = bootstrap_servers
         self._topic = topic
         self._source_id = str(uuid.uuid4())
@@ -41,6 +50,8 @@ class KafkaInvalidationBus:
         remove_local: RemoveLocal,
         clear_local: ClearLocal,
     ) -> None:
+        """Start the Kafka producer, consumer, and listener task."""
+
         if self._listener_task is not None:
             return
 
@@ -64,6 +75,8 @@ class KafkaInvalidationBus:
         self._listener_task = asyncio.create_task(self._listen())
 
     async def stop(self) -> None:
+        """Stop the listener task and close Kafka clients."""
+
         if self._listener_task is not None:
             self._listener_task.cancel()
 
@@ -83,9 +96,13 @@ class KafkaInvalidationBus:
         self._clear_local = None
 
     async def invalidate(self, key: str) -> None:
+        """Publish a key-removal message to the Kafka topic."""
+
         await self._publish(InvalidationMessage.remove(key))
 
     async def clear(self) -> None:
+        """Publish a clear-all message to the Kafka topic."""
+
         await self._publish(InvalidationMessage.clear())
 
     async def _publish(self, message: InvalidationMessage) -> None:

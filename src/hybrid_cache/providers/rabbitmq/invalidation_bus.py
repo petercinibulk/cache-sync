@@ -14,6 +14,8 @@ from hybrid_cache.invalidation import (
 
 
 class RabbitMQInvalidationBus:
+    """Invalidation bus backed by a RabbitMQ fanout exchange."""
+
     def __init__(
         self,
         connection: Any,
@@ -21,6 +23,8 @@ class RabbitMQInvalidationBus:
         exchange_name: str = "hybrid-cache-invalidations",
         node_name: str | None = None,
     ) -> None:
+        """Create a RabbitMQ invalidation bus using an existing connection."""
+
         self._connection = connection
         self._exchange_name = exchange_name
         self._source_id = str(uuid.uuid4())
@@ -38,6 +42,8 @@ class RabbitMQInvalidationBus:
         remove_local: RemoveLocal,
         clear_local: ClearLocal,
     ) -> None:
+        """Declare the fanout exchange, bind an exclusive queue, and consume."""
+
         if self._channel is not None:
             return
 
@@ -62,6 +68,8 @@ class RabbitMQInvalidationBus:
         self._consumer_tag = await self._queue.consume(self._handle_incoming_message)
 
     async def stop(self) -> None:
+        """Cancel consumption and close the created channel."""
+
         if self._queue is not None and self._consumer_tag is not None:
             with suppress(Exception):
                 await self._queue.cancel(self._consumer_tag)
@@ -78,9 +86,13 @@ class RabbitMQInvalidationBus:
         self._clear_local = None
 
     async def invalidate(self, key: str) -> None:
+        """Publish a key-removal message to the fanout exchange."""
+
         await self._publish(InvalidationMessage.remove(key))
 
     async def clear(self) -> None:
+        """Publish a clear-all message to the fanout exchange."""
+
         await self._publish(InvalidationMessage.clear())
 
     async def _publish(self, message: InvalidationMessage) -> None:

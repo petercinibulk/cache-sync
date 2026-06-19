@@ -1,3 +1,5 @@
+"""Public API for hybrid-cache."""
+
 from typing import TYPE_CHECKING, Any
 
 from hybrid_cache.core import CacheOptions, HybridCache

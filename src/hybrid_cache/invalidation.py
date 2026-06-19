@@ -11,15 +11,21 @@ type ClearLocal = Callable[[], None]
 
 @dataclass(frozen=True, slots=True)
 class InvalidationMessage:
+    """Message sent between cache nodes to remove keys or clear local memory."""
+
     action: InvalidationAction
     key: str | None = None
 
     @classmethod
     def remove(cls, key: str) -> InvalidationMessage:
+        """Create a message that removes one key from peer local caches."""
+
         return cls(action="remove", key=key)
 
     @classmethod
     def clear(cls) -> InvalidationMessage:
+        """Create a message that clears peer local caches."""
+
         return cls(action="clear")
 
 
@@ -27,6 +33,8 @@ type InvalidationHandler = Callable[[InvalidationMessage], Awaitable[None]]
 
 
 class InvalidationTransport(Protocol):
+    """Low-level transport used by `TransportInvalidationBus`."""
+
     async def start(self, handler: InvalidationHandler) -> None: ...
 
     async def stop(self) -> None: ...
@@ -35,6 +43,8 @@ class InvalidationTransport(Protocol):
 
 
 class InvalidationBus(Protocol):
+    """Protocol for publishing and receiving cache invalidation events."""
+
     async def start(
         self,
         *,
@@ -50,7 +60,11 @@ class InvalidationBus(Protocol):
 
 
 class TransportInvalidationBus:
+    """Adapt an `InvalidationTransport` into the `InvalidationBus` protocol."""
+
     def __init__(self, transport: InvalidationTransport) -> None:
+        """Create an invalidation bus backed by a generic transport."""
+
         self._transport = transport
         self._remove_local: RemoveLocal | None = None
         self._clear_local: ClearLocal | None = None
@@ -61,19 +75,27 @@ class TransportInvalidationBus:
         remove_local: RemoveLocal,
         clear_local: ClearLocal,
     ) -> None:
+        """Start listening for remote invalidation messages."""
+
         self._remove_local = remove_local
         self._clear_local = clear_local
         await self._transport.start(self._handle_message)
 
     async def stop(self) -> None:
+        """Stop listening and release local callbacks."""
+
         await self._transport.stop()
         self._remove_local = None
         self._clear_local = None
 
     async def invalidate(self, key: str) -> None:
+        """Publish a message instructing peers to remove one key."""
+
         await self._transport.publish(InvalidationMessage.remove(key))
 
     async def clear(self) -> None:
+        """Publish a message instructing peers to clear local memory."""
+
         await self._transport.publish(InvalidationMessage.clear())
 
     async def _handle_message(self, message: InvalidationMessage) -> None:

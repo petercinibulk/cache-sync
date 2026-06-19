@@ -13,6 +13,8 @@ from hybrid_cache.invalidation import (
 
 
 class PostgresNotifyInvalidationBus:
+    """Invalidation bus backed by PostgreSQL LISTEN/NOTIFY."""
+
     def __init__(
         self,
         connection: Any,
@@ -20,6 +22,8 @@ class PostgresNotifyInvalidationBus:
         channel: str = "hybrid_cache_invalidations",
         node_name: str | None = None,
     ) -> None:
+        """Create a Postgres notification invalidation bus."""
+
         self._connection = connection
         self._channel = channel
         self._source_id = str(uuid.uuid4())
@@ -34,6 +38,8 @@ class PostgresNotifyInvalidationBus:
         remove_local: RemoveLocal,
         clear_local: ClearLocal,
     ) -> None:
+        """Register a notification listener on the configured channel."""
+
         if self._started:
             return
 
@@ -43,6 +49,8 @@ class PostgresNotifyInvalidationBus:
         self._started = True
 
     async def stop(self) -> None:
+        """Remove the notification listener and clear local callbacks."""
+
         if self._started:
             await self._connection.remove_listener(self._channel, self._handle_notification)
 
@@ -51,9 +59,13 @@ class PostgresNotifyInvalidationBus:
         self._clear_local = None
 
     async def invalidate(self, key: str) -> None:
+        """Publish a key-removal notification."""
+
         await self._publish(InvalidationMessage.remove(key))
 
     async def clear(self) -> None:
+        """Publish a clear-all notification."""
+
         await self._publish(InvalidationMessage.clear())
 
     async def _publish(self, message: InvalidationMessage) -> None:

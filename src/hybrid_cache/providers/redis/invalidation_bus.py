@@ -24,6 +24,8 @@ type RedisStreamResponse = list[tuple[bytes | str, list[RedisMessage]]]
 
 
 class RedisStreamsInvalidationBus:
+    """Invalidation bus backed by Redis Streams consumer groups."""
+
     def __init__(
         self,
         redis: Redis,
@@ -32,6 +34,8 @@ class RedisStreamsInvalidationBus:
         node_name: str | None = None,
         max_length: int = 10_000,
     ) -> None:
+        """Create a Redis Streams invalidation bus."""
+
         self._redis = redis
         self._stream_name = stream_name
         self._source_id = str(uuid.uuid4())
@@ -50,6 +54,8 @@ class RedisStreamsInvalidationBus:
         remove_local: RemoveLocal,
         clear_local: ClearLocal,
     ) -> None:
+        """Create the consumer group if needed and start the listener task."""
+
         if self._listener_task is not None:
             return
 
@@ -60,6 +66,8 @@ class RedisStreamsInvalidationBus:
         self._listener_task = asyncio.create_task(self._listen())
 
     async def stop(self) -> None:
+        """Cancel the listener task and clear local callbacks."""
+
         self._stopped.set()
 
         if self._listener_task is None:
@@ -75,9 +83,13 @@ class RedisStreamsInvalidationBus:
         self._clear_local = None
 
     async def invalidate(self, key: str) -> None:
+        """Publish a key-removal message to the stream."""
+
         await self._publish(InvalidationMessage.remove(key))
 
     async def clear(self) -> None:
+        """Publish a clear-all message to the stream."""
+
         await self._publish(InvalidationMessage.clear())
 
     async def _publish(self, message: InvalidationMessage) -> None:

@@ -11,6 +11,8 @@ T = TypeVar("T")
 
 
 class CachedFunction(Generic[P, T]):
+    """Callable wrapper returned by `cached` with cache-management helpers."""
+
     def __init__(
         self,
         cache: HybridCache,
@@ -24,6 +26,8 @@ class CachedFunction(Generic[P, T]):
         self._options = options
 
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        """Return the cached result for this call or invoke the wrapped function."""
+
         return await self._cache.get_or_set(
             self.cache_key(*args, **kwargs),
             lambda: self._func(*args, **kwargs),
@@ -31,9 +35,13 @@ class CachedFunction(Generic[P, T]):
         )
 
     async def remove_cached(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        """Remove the cached value associated with this call's cache key."""
+
         await self._cache.remove(self.cache_key(*args, **kwargs))
 
     def cache_key(self, *args: P.args, **kwargs: P.kwargs) -> str:
+        """Build the cache key for the supplied function arguments."""
+
         if isinstance(self._key, str):
             return self._key
         if self._key is None:
@@ -47,6 +55,13 @@ def cached(
     *,
     options: CacheOptions | None = None,
 ) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]:
+    """Cache an async function using `HybridCache`.
+
+    When `key` is omitted, the key is built from the wrapped function's module,
+    qualified name, and bound arguments. Pass a string or callable to override
+    that default key shape.
+    """
+
     def decorator(func: Callable[P, Awaitable[T]]) -> CachedFunction[P, T]:
         return CachedFunction(cache, func, key, options)
 
@@ -54,6 +69,8 @@ def cached(
 
 
 def default_cache_key(func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any) -> str:
+    """Build a deterministic key from a function and call arguments."""
+
     signature = inspect.signature(func)
     bound = signature.bind(*args, **kwargs)
     bound.apply_defaults()
