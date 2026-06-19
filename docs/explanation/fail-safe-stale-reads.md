@@ -2,6 +2,15 @@
 
 Fail-safe stale reads let your application keep serving the last local value when a refresh fails.
 
+```mermaid
+timeline
+    title Local value lifetime
+    Fresh window : return cached value
+    Refresh attempt : try to load new value
+    Fail-safe window : return stale value if refresh fails
+    Expired : raise refresh error if refresh still fails
+```
+
 Each local entry has two deadlines:
 
 | Deadline | Meaning |

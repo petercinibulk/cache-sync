@@ -2,6 +2,15 @@
 
 Invalidate cached data when your application changes the source record or when an operator needs to force a refresh.
 
+```mermaid
+flowchart TD
+    Change["Source data changes"] --> Remove["Remove cached key"]
+    Remove --> Local["Delete local L1 value"]
+    Remove --> Distributed["Delete distributed L2 value"]
+    Remove --> Notify["Notify peer instances"]
+    Notify --> Peers["Peers drop local L1 value"]
+```
+
 ## Remove one key
 
 ```python

@@ -2,8 +2,16 @@
 
 `Hybrid-Cache` reads values in this order:
 
-```text
-local memory L1 -> distributed L2 -> value factory
+```mermaid
+flowchart LR
+    Call["Cached call"] --> L1{"L1 hit?"}
+    L1 -- yes --> Return["Return value"]
+    L1 -- no --> L2{"L2 hit?"}
+    L2 -- yes --> RefreshL1["Refresh L1"]
+    RefreshL1 --> Return
+    L2 -- no --> Factory["Run async function"]
+    Factory --> Store["Store in L1 and L2"]
+    Store --> Return
 ```
 
 The L1 cache is inside each application process. It is the fastest place to read from, but each process has its own local copy.

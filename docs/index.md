@@ -2,6 +2,15 @@
 
 `Hybrid-Cache` helps async Python applications cache expensive work in local memory, optionally share values through Redis, and keep multiple application instances in sync with an invalidation bus.
 
+```mermaid
+flowchart LR
+    App["Async app"] --> Cache["Hybrid-Cache"]
+    Cache --> L1["Local memory L1"]
+    Cache -. optional .-> L2["Redis L2"]
+    Cache -. optional .-> Bus["Invalidation bus"]
+    Bus -. remove stale local keys .-> Peers["Other app instances"]
+```
+
 ## Choose your path
 
 <div class="grid cards" markdown>
