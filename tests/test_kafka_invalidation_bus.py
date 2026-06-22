@@ -8,7 +8,7 @@ from typing import ClassVar
 
 import pytest
 
-from hybrid_cache import KafkaInvalidationBus
+from cache_sync import KafkaInvalidationBus
 
 
 class FakeRecord:
@@ -91,7 +91,7 @@ async def test_kafka_invalidation_bus_starts_clients_and_publishes(
     assert consumer.topics == ("invalidations",)
     assert consumer.kwargs == {
         "bootstrap_servers": "localhost:9092",
-        "group_id": "hybrid-cache-node:node",
+        "group_id": "cache-sync-node:node",
         "auto_offset_reset": "latest",
     }
     assert producer.started

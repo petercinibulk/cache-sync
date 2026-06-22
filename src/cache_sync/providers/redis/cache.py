@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from redis.asyncio import Redis
 
-from hybrid_cache.serializers import PickleSerializer, Serializer
+from cache_sync.serializers import PickleSerializer, Serializer
 
 
 class RedisDistributedCache:
@@ -12,7 +12,7 @@ class RedisDistributedCache:
         self,
         redis: Redis,
         *,
-        prefix: str = "hybrid-cache:",
+        prefix: str = "cache-sync:",
         serializer: Serializer | None = None,
     ) -> None:
         """Create a Redis distributed cache with an optional key prefix."""

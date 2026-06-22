@@ -5,15 +5,15 @@ In this tutorial you will cache one async function, read the value from the cach
 ## Install
 
 ```bash
-uv add hybrid-cache
+uv add cache-sync
 ```
 
 ## Create an in-memory cache
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache
+from cache_sync import CacheOptions, CacheSync
 
-cache = HybridCache(
+cache = CacheSync(
     options=CacheOptions(
         ttl_seconds=60,
         fail_safe_seconds=300,
@@ -51,7 +51,7 @@ Use this after your application changes the underlying user record.
 Install the Redis extra:
 
 ```bash
-uv add "hybrid-cache[redis]"
+uv add "cache-sync[redis]"
 ```
 
 Create a Redis-backed cache:
@@ -59,16 +59,16 @@ Create a Redis-backed cache:
 ```python
 from redis.asyncio import Redis
 
-from hybrid_cache import (
+from cache_sync import (
     CacheOptions,
-    HybridCache,
+    CacheSync,
     RedisDistributedCache,
     RedisStreamsInvalidationBus,
 )
 
 redis = Redis.from_url("redis://localhost:6379/0", decode_responses=False)
 
-cache = HybridCache(
+cache = CacheSync(
     distributed_cache=RedisDistributedCache(redis),
     invalidation_bus=RedisStreamsInvalidationBus(redis),
     options=CacheOptions(ttl_seconds=60, fail_safe_seconds=300),

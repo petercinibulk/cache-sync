@@ -1,11 +1,11 @@
 # Install Optional Providers
 
-`Hybrid-Cache` has no required runtime dependencies. Install only the providers your application uses.
+`Cache-Sync` has no required runtime dependencies. Install only the providers your application uses.
 
 ## Redis distributed cache and Redis Streams invalidation
 
 ```bash
-uv add "hybrid-cache[redis]"
+uv add "cache-sync[redis]"
 ```
 
 Use this when Redis should store shared cached values, carry invalidation messages, or both.
@@ -13,7 +13,7 @@ Use this when Redis should store shared cached values, carry invalidation messag
 ## RabbitMQ invalidation
 
 ```bash
-uv add "hybrid-cache[rabbitmq]"
+uv add "cache-sync[rabbitmq]"
 ```
 
 Use this when your application already has RabbitMQ and only needs invalidation messages between instances.
@@ -21,7 +21,7 @@ Use this when your application already has RabbitMQ and only needs invalidation 
 ## Kafka invalidation
 
 ```bash
-uv add "hybrid-cache[kafka]"
+uv add "cache-sync[kafka]"
 ```
 
 Use this when Kafka is already part of your platform and every cache instance must receive each invalidation.
@@ -29,7 +29,7 @@ Use this when Kafka is already part of your platform and every cache instance mu
 ## PostgreSQL notification invalidation
 
 ```bash
-uv add "hybrid-cache[postgres]"
+uv add "cache-sync[postgres]"
 ```
 
 Use this for PostgreSQL `LISTEN`/`NOTIFY` invalidation when you do not want to run a separate message broker.
@@ -37,7 +37,7 @@ Use this for PostgreSQL `LISTEN`/`NOTIFY` invalidation when you do not want to r
 ## All optional providers
 
 ```bash
-uv add "hybrid-cache[all]"
+uv add "cache-sync[all]"
 ```
 
 Use this for experiments or shared application templates. Production apps usually install only the extras they need.

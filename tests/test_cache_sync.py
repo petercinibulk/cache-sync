@@ -4,8 +4,8 @@ import asyncio
 
 import pytest
 
-from hybrid_cache import CacheOptions, HybridCache
-from hybrid_cache.invalidation import ClearLocal, RemoveLocal
+from cache_sync import CacheOptions, CacheSync
+from cache_sync.invalidation import ClearLocal, RemoveLocal
 
 
 class RecordingInvalidationBus:
@@ -57,7 +57,7 @@ class RecordingDistributedCache:
 
 @pytest.mark.asyncio
 async def test_get_or_set_returns_cached_value() -> None:
-    cache = HybridCache(options=CacheOptions(ttl_seconds=60))
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
     async def factory() -> str:
@@ -75,7 +75,7 @@ async def test_get_or_set_returns_cached_value() -> None:
 
 @pytest.mark.asyncio
 async def test_get_or_set_prevents_stampede() -> None:
-    cache = HybridCache(options=CacheOptions(ttl_seconds=60))
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
     async def factory() -> str:
@@ -92,7 +92,7 @@ async def test_get_or_set_prevents_stampede() -> None:
 
 @pytest.mark.asyncio
 async def test_fail_safe_returns_stale_value() -> None:
-    cache = HybridCache(options=CacheOptions(ttl_seconds=0.01, fail_safe_seconds=60))
+    cache = CacheSync(options=CacheOptions(ttl_seconds=0.01, fail_safe_seconds=60))
 
     async def working_factory() -> str:
         return "stale"
@@ -110,7 +110,7 @@ async def test_fail_safe_returns_stale_value() -> None:
 
 @pytest.mark.asyncio
 async def test_remove_deletes_cached_value() -> None:
-    cache = HybridCache(options=CacheOptions(ttl_seconds=60))
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
     async def factory() -> str:
@@ -126,7 +126,7 @@ async def test_remove_deletes_cached_value() -> None:
 @pytest.mark.asyncio
 async def test_invalidation_bus_works_without_distributed_cache() -> None:
     bus = RecordingInvalidationBus()
-    cache = HybridCache(
+    cache = CacheSync(
         invalidation_bus=bus,
         options=CacheOptions(ttl_seconds=60),
     )
@@ -150,7 +150,7 @@ async def test_invalidation_bus_works_without_distributed_cache() -> None:
 async def test_invalidation_bus_and_distributed_cache_are_independent() -> None:
     distributed_cache = RecordingDistributedCache()
     bus = RecordingInvalidationBus()
-    cache = HybridCache(
+    cache = CacheSync(
         distributed_cache=distributed_cache,
         invalidation_bus=bus,
         options=CacheOptions(ttl_seconds=60),
@@ -170,7 +170,7 @@ async def test_invalidation_bus_and_distributed_cache_are_independent() -> None:
 
 @pytest.mark.asyncio
 async def test_decorator_preserves_return_type_and_remove_cached() -> None:
-    cache = HybridCache(options=CacheOptions(ttl_seconds=60))
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
     @cache.cached(lambda user_id: f"user:{user_id}")
@@ -193,7 +193,7 @@ async def test_decorator_preserves_return_type_and_remove_cached() -> None:
 
 @pytest.mark.asyncio
 async def test_decorator_defaults_to_function_arguments_cache_key() -> None:
-    cache = HybridCache(options=CacheOptions(ttl_seconds=60))
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60))
     calls = 0
 
     @cache.cached()
@@ -219,3 +219,20 @@ async def test_decorator_defaults_to_function_arguments_cache_key() -> None:
     assert refreshed["call"] == 3
     assert calls == 3
     assert get_user.cache_key("123").endswith("get_user(user_id='123',include_disabled=False)")
+
+
+@pytest.mark.asyncio
+async def test_decorator_accepts_cache_policy_overrides() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, fail_safe_seconds=60))
+    calls = 0
+
+    @cache.cached(options=CacheOptions(ttl_seconds=0.01))
+    async def get_value() -> str:
+        nonlocal calls
+        calls += 1
+        return f"value-{calls}"
+
+    assert await get_value() == "value-1"
+    await asyncio.sleep(0.02)
+    assert await get_value() == "value-2"
+    assert calls == 2

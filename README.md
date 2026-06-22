@@ -1,4 +1,4 @@
-# hybrid-cache
+# cache-sync
 
 Async hybrid Python cache with in-memory L1 caching, optional Redis L2 caching, pluggable invalidation, stampede protection, fail-safe stale values, and typed decorators.
 
@@ -14,22 +14,22 @@ Async hybrid Python cache with in-memory L1 caching, optional Redis L2 caching, 
 
 ## Documentation
 
-The end-user documentation is published at <https://petercinibulk.github.io/hybrid-cache/> and is built from [`docs/`](docs/index.md) with Zensical.
+The end-user documentation is published at <https://petercinibulk.github.io/cache-sync/> and is built from [`docs/`](docs/index.md) with Zensical.
 
 ## Install
 
 ```bash
-uv add hybrid-cache
+uv add cache-sync
 ```
 
 Install optional providers only when your application uses them:
 
 ```bash
-uv add "hybrid-cache[redis]"
-uv add "hybrid-cache[rabbitmq]"
-uv add "hybrid-cache[kafka]"
-uv add "hybrid-cache[postgres]"
-uv add "hybrid-cache[all]"
+uv add "cache-sync[redis]"
+uv add "cache-sync[rabbitmq]"
+uv add "cache-sync[kafka]"
+uv add "cache-sync[postgres]"
+uv add "cache-sync[all]"
 ```
 
 | Extra | Installs | Use when |
@@ -44,9 +44,9 @@ uv add "hybrid-cache[all]"
 ## Quick Start
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache
+from cache_sync import CacheOptions, CacheSync
 
-cache = HybridCache(
+cache = CacheSync(
     options=CacheOptions(
         ttl_seconds=60,
         fail_safe_seconds=300,
@@ -73,11 +73,11 @@ await cache.stop()
 ```python
 from redis.asyncio import Redis
 
-from hybrid_cache import CacheOptions, HybridCache, RedisDistributedCache
+from cache_sync import CacheOptions, CacheSync, RedisDistributedCache
 
 redis = Redis.from_url("redis://localhost:6379/0")
 
-cache = HybridCache(
+cache = CacheSync(
     distributed_cache=RedisDistributedCache(redis),
     options=CacheOptions(ttl_seconds=60, fail_safe_seconds=300),
 )
@@ -90,10 +90,10 @@ async def get_product(product_id: str) -> dict[str, str]:
     return {"id": product_id}
 ```
 
-For a complete walkthrough with shared values and cross-instance invalidation, see the [get started tutorial](https://petercinibulk.github.io/hybrid-cache/tutorials/get-started/).
+For a complete walkthrough with shared values and cross-instance invalidation, see the [get started tutorial](https://petercinibulk.github.io/cache-sync/tutorials/get-started/).
 
 ## Project
 
 - License: MIT
-- Source: <https://github.com/petercinibulk/hybrid-cache>
-- Issues: <https://github.com/petercinibulk/hybrid-cache/issues>
+- Source: <https://github.com/petercinibulk/cache-sync>
+- Issues: <https://github.com/petercinibulk/cache-sync/issues>

@@ -13,8 +13,8 @@ Distributed cache and invalidation are independent. You can use Redis for shared
 
 | Provider | Default name |
 | --- | --- |
-| Redis distributed key prefix | `hybrid-cache:` |
-| Redis invalidation stream | `hybrid-cache:invalidations` |
-| RabbitMQ exchange | `hybrid-cache-invalidations` |
-| Kafka topic | `hybrid-cache-invalidations` |
-| PostgreSQL channel | `hybrid_cache_invalidations` |
+| Redis distributed key prefix | `cache-sync:` |
+| Redis invalidation stream | `cache-sync:invalidations` |
+| RabbitMQ exchange | `cache-sync-invalidations` |
+| Kafka topic | `cache-sync-invalidations` |
+| PostgreSQL channel | `cache_sync_invalidations` |

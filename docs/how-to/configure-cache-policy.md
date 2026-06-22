@@ -5,9 +5,9 @@ Cache policy controls freshness, stale fallback, timeout behavior, and TTL sprea
 ## Set defaults for the whole cache
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache
+from cache_sync import CacheOptions, CacheSync
 
-cache = HybridCache(
+cache = CacheSync(
     options=CacheOptions(
         ttl_seconds=120,
         fail_safe_seconds=600,
@@ -20,7 +20,7 @@ cache = HybridCache(
 ## Override policy for one cached function
 
 ```python
-from hybrid_cache import CacheOptions
+from cache_sync import CacheOptions
 
 
 @cache.cached(

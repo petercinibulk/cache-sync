@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "python",
-      "package-name": "hybrid-cache",
+      "package-name": "cache-sync",
       "changelog-path": "CHANGELOG.md"
     }
   }

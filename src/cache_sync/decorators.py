@@ -4,21 +4,21 @@ import inspect
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Generic, ParamSpec, TypeVar
 
-from hybrid_cache.core import CacheOptions
+from cache_sync.core import CacheOptions
 
 if TYPE_CHECKING:
-    from hybrid_cache.core import HybridCache
+    from cache_sync.core import CacheSync
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
 
 class CachedFunction(Generic[P, T]):
-    """Callable wrapper returned by `HybridCache.cached` with cache helpers."""
+    """Callable wrapper returned by `CacheSync.cached` with cache helpers."""
 
     def __init__(
         self,
-        cache: HybridCache,
+        cache: CacheSync,
         func: Callable[P, Awaitable[T]],
         key: str | Callable[..., str] | None,
         options: CacheOptions | None,

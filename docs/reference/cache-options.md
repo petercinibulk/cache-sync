@@ -12,7 +12,7 @@
 Pass options to the cache for global defaults:
 
 ```python
-cache = HybridCache(options=CacheOptions(ttl_seconds=120))
+cache = CacheSync(options=CacheOptions(ttl_seconds=120))
 ```
 
 Pass options to `@cache.cached` for one function:

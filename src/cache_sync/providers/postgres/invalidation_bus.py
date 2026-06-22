@@ -5,7 +5,7 @@ import socket
 import uuid
 from typing import Any
 
-from hybrid_cache.invalidation import (
+from cache_sync.invalidation import (
     ClearLocal,
     InvalidationMessage,
     RemoveLocal,
@@ -19,7 +19,7 @@ class PostgresNotifyInvalidationBus:
         self,
         connection: Any,
         *,
-        channel: str = "hybrid_cache_invalidations",
+        channel: str = "cache_sync_invalidations",
         node_name: str | None = None,
     ) -> None:
         """Create a Postgres notification invalidation bus."""

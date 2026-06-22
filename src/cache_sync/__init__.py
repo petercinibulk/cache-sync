@@ -1,18 +1,18 @@
-"""Public API for hybrid-cache."""
+"""Public API for cache-sync."""
 
 from typing import TYPE_CHECKING, Any
 
-from hybrid_cache.core import CacheOptions, HybridCache
-from hybrid_cache.decorators import CachedFunction
-from hybrid_cache.distributed_cache import DistributedCache
-from hybrid_cache.invalidation import (
+from cache_sync.core import CacheOptions, CacheSync
+from cache_sync.decorators import CachedFunction
+from cache_sync.distributed_cache import DistributedCache
+from cache_sync.invalidation import (
     InvalidationBus,
     InvalidationHandler,
     InvalidationMessage,
     InvalidationTransport,
     TransportInvalidationBus,
 )
-from hybrid_cache.serializers import (
+from cache_sync.serializers import (
     JsonSerializer,
     PickleSerializer,
     PydanticSerializer,
@@ -20,19 +20,19 @@ from hybrid_cache.serializers import (
 )
 
 if TYPE_CHECKING:
-    from hybrid_cache.providers.kafka import KafkaInvalidationBus
-    from hybrid_cache.providers.postgres import PostgresNotifyInvalidationBus
-    from hybrid_cache.providers.rabbitmq import RabbitMQInvalidationBus
-    from hybrid_cache.providers.redis import (
+    from cache_sync.providers.kafka import KafkaInvalidationBus
+    from cache_sync.providers.postgres import PostgresNotifyInvalidationBus
+    from cache_sync.providers.rabbitmq import RabbitMQInvalidationBus
+    from cache_sync.providers.redis import (
         RedisDistributedCache,
         RedisStreamsInvalidationBus,
     )
 
 __all__ = [
     "CacheOptions",
+    "CacheSync",
     "CachedFunction",
     "DistributedCache",
-    "HybridCache",
     "InvalidationBus",
     "InvalidationHandler",
     "InvalidationMessage",
@@ -52,27 +52,27 @@ __all__ = [
 
 def __getattr__(name: str) -> Any:
     if name == "RedisDistributedCache":
-        from hybrid_cache.providers.redis import RedisDistributedCache
+        from cache_sync.providers.redis import RedisDistributedCache
 
         return RedisDistributedCache
 
     if name == "RedisStreamsInvalidationBus":
-        from hybrid_cache.providers.redis import RedisStreamsInvalidationBus
+        from cache_sync.providers.redis import RedisStreamsInvalidationBus
 
         return RedisStreamsInvalidationBus
 
     if name == "RabbitMQInvalidationBus":
-        from hybrid_cache.providers.rabbitmq import RabbitMQInvalidationBus
+        from cache_sync.providers.rabbitmq import RabbitMQInvalidationBus
 
         return RabbitMQInvalidationBus
 
     if name == "KafkaInvalidationBus":
-        from hybrid_cache.providers.kafka import KafkaInvalidationBus
+        from cache_sync.providers.kafka import KafkaInvalidationBus
 
         return KafkaInvalidationBus
 
     if name == "PostgresNotifyInvalidationBus":
-        from hybrid_cache.providers.postgres import PostgresNotifyInvalidationBus
+        from cache_sync.providers.postgres import PostgresNotifyInvalidationBus
 
         return PostgresNotifyInvalidationBus
 

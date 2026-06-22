@@ -1,18 +1,18 @@
 # Public API
 
-Import these names from `hybrid_cache` for normal application use.
+Import these names from `cache_sync` for normal application use.
 
 ```python
-from hybrid_cache import CacheOptions, HybridCache
+from cache_sync import CacheOptions, CacheSync
 ```
 
 ## Cache
 
 | Name | Purpose |
 | --- | --- |
-| `HybridCache` | Coordinates local memory, optional distributed storage, invalidation, and lifecycle. |
+| `CacheSync` | Coordinates local memory, optional distributed storage, invalidation, and lifecycle. |
 | `CacheOptions` | Configures TTL, stale reads, timeouts, jitter, and caching of `None` values. |
-| `HybridCache.cached` | Decorates an async function and adds cache lookup, set, and removal behavior. |
+| `CacheSync.cached` | Decorates an async function and adds cache lookup, set, and removal behavior. |
 | `CachedFunction` | Wrapper for decorated functions with `remove_cached` and `cache_key` helpers. |
 | `DistributedCache` | Protocol implemented by shared cache providers such as Redis. |
 
@@ -49,4 +49,4 @@ Provider classes are lazily imported so optional dependencies are only required 
 
 ## Type information
 
-`hybrid-cache` ships a `py.typed` marker. Type checkers can use the inline annotations from the installed package.
+`cache-sync` ships a `py.typed` marker. Type checkers can use the inline annotations from the installed package.

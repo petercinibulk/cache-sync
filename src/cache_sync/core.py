@@ -7,14 +7,14 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ParamSpec, TypeVar, cast
 
-from hybrid_cache.distributed_cache import DistributedCache
-from hybrid_cache.invalidation import InvalidationBus
+from cache_sync.distributed_cache import DistributedCache
+from cache_sync.invalidation import InvalidationBus
 
 T = TypeVar("T")
 P = ParamSpec("P")
 
 if TYPE_CHECKING:
-    from hybrid_cache.decorators import CachedFunction
+    from cache_sync.decorators import CachedFunction
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +44,7 @@ class CacheEntry:
         return time.monotonic() < self.fail_safe_until
 
 
-class HybridCache:
+class CacheSync:
     """Async two-level cache with optional distributed storage and invalidation."""
 
     def __init__(
@@ -87,7 +87,7 @@ class HybridCache:
     ) -> Callable[[Callable[P, Awaitable[T]]], CachedFunction[P, T]]:
         """Decorate an async function using this cache instance."""
 
-        from hybrid_cache.decorators import CachedFunction
+        from cache_sync.decorators import CachedFunction
 
         def decorator(func: Callable[P, Awaitable[T]]) -> CachedFunction[P, T]:
             return CachedFunction(self, func, key, options)

@@ -1,48 +1,40 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import socket
 import uuid
-from collections.abc import Sequence
 from contextlib import suppress
 from typing import Any
 
-from hybrid_cache.invalidation import (
+from cache_sync.invalidation import (
     ClearLocal,
     InvalidationMessage,
     RemoveLocal,
 )
 
 
-class KafkaInvalidationBus:
-    """Invalidation bus backed by a Kafka topic."""
+class RabbitMQInvalidationBus:
+    """Invalidation bus backed by a RabbitMQ fanout exchange."""
 
     def __init__(
         self,
+        connection: Any,
         *,
-        bootstrap_servers: str | Sequence[str],
-        topic: str = "hybrid-cache-invalidations",
+        exchange_name: str = "cache-sync-invalidations",
         node_name: str | None = None,
-        group_id: str | None = None,
     ) -> None:
-        """Create a Kafka invalidation bus.
+        """Create a RabbitMQ invalidation bus using an existing connection."""
 
-        By default, each node gets a unique consumer group so every node receives
-        every invalidation. Supplying the same `group_id` for multiple nodes will
-        load-balance messages and is usually wrong for cache invalidation.
-        """
-
-        self._bootstrap_servers = bootstrap_servers
-        self._topic = topic
+        self._connection = connection
+        self._exchange_name = exchange_name
         self._source_id = str(uuid.uuid4())
         self._node_name = node_name or f"{socket.gethostname()}-{self._source_id}"
-        self._group_id = group_id or f"hybrid-cache-node:{self._node_name}"
         self._remove_local: RemoveLocal | None = None
         self._clear_local: ClearLocal | None = None
-        self._producer: Any | None = None
-        self._consumer: Any | None = None
-        self._listener_task: asyncio.Task[None] | None = None
+        self._channel: Any | None = None
+        self._exchange: Any | None = None
+        self._queue: Any | None = None
+        self._consumer_tag: str | None = None
 
     async def start(
         self,
@@ -50,78 +42,81 @@ class KafkaInvalidationBus:
         remove_local: RemoveLocal,
         clear_local: ClearLocal,
     ) -> None:
-        """Start the Kafka producer, consumer, and listener task."""
+        """Declare the fanout exchange, bind an exclusive queue, and consume."""
 
-        if self._listener_task is not None:
+        if self._channel is not None:
             return
 
         try:
-            from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
+            from aio_pika import ExchangeType
         except ImportError as ex:  # pragma: no cover - exercised only without optional deps
-            msg = "Install hybrid-cache with the kafka dependency group to use Kafka."
+            msg = "Install cache-sync with the rabbitmq dependency group to use RabbitMQ."
             raise RuntimeError(msg) from ex
 
         self._remove_local = remove_local
         self._clear_local = clear_local
-        self._producer = AIOKafkaProducer(bootstrap_servers=self._bootstrap_servers)
-        self._consumer = AIOKafkaConsumer(
-            self._topic,
-            bootstrap_servers=self._bootstrap_servers,
-            group_id=self._group_id,
-            auto_offset_reset="latest",
+        self._channel = await self._connection.channel()
+        self._exchange = await self._channel.declare_exchange(
+            self._exchange_name,
+            ExchangeType.FANOUT,
         )
-        await self._producer.start()
-        await self._consumer.start()
-        self._listener_task = asyncio.create_task(self._listen())
+        self._queue = await self._channel.declare_queue(
+            exclusive=True,
+            auto_delete=True,
+        )
+        await self._queue.bind(self._exchange)
+        self._consumer_tag = await self._queue.consume(self._handle_incoming_message)
 
     async def stop(self) -> None:
-        """Stop the listener task and close Kafka clients."""
+        """Cancel consumption and close the created channel."""
 
-        if self._listener_task is not None:
-            self._listener_task.cancel()
+        if self._queue is not None and self._consumer_tag is not None:
+            with suppress(Exception):
+                await self._queue.cancel(self._consumer_tag)
 
-            with suppress(asyncio.CancelledError):
-                await self._listener_task
+        if self._channel is not None:
+            with suppress(Exception):
+                await self._channel.close()
 
-        if self._consumer is not None:
-            await self._consumer.stop()
-
-        if self._producer is not None:
-            await self._producer.stop()
-
-        self._listener_task = None
-        self._consumer = None
-        self._producer = None
+        self._channel = None
+        self._exchange = None
+        self._queue = None
+        self._consumer_tag = None
         self._remove_local = None
         self._clear_local = None
 
     async def invalidate(self, key: str) -> None:
-        """Publish a key-removal message to the Kafka topic."""
+        """Publish a key-removal message to the fanout exchange."""
 
         await self._publish(InvalidationMessage.remove(key))
 
     async def clear(self) -> None:
-        """Publish a clear-all message to the Kafka topic."""
+        """Publish a clear-all message to the fanout exchange."""
 
         await self._publish(InvalidationMessage.clear())
 
     async def _publish(self, message: InvalidationMessage) -> None:
-        if self._producer is None:
-            msg = "KafkaInvalidationBus must be started before publishing."
+        if self._exchange is None:
+            msg = "RabbitMQInvalidationBus must be started before publishing."
             raise RuntimeError(msg)
 
-        await self._producer.send_and_wait(
-            self._topic,
-            self._encode_message(message),
+        try:
+            from aio_pika import Message
+        except ImportError as ex:  # pragma: no cover - exercised only without optional deps
+            msg = "Install cache-sync with the rabbitmq dependency group to use RabbitMQ."
+            raise RuntimeError(msg) from ex
+
+        await self._exchange.publish(
+            Message(
+                body=self._encode_message(message),
+                content_type="application/json",
+            ),
+            routing_key="",
         )
 
-    async def _listen(self) -> None:
-        consumer = self._consumer
-        if consumer is None:
-            return
-
-        async for record in consumer:
-            self._apply_payload(record.value)
+    async def _handle_incoming_message(self, incoming_message: Any) -> None:
+        async with incoming_message.process():
+            self._apply_payload(incoming_message.body)
 
     def _apply_payload(self, payload: bytes | str) -> None:
         message = self._decode_message(payload)

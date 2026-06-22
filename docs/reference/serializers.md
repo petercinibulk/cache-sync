@@ -11,7 +11,7 @@ Serializers convert values to bytes for distributed cache storage and back again
 ## Use JSON with Redis
 
 ```python
-from hybrid_cache import JsonSerializer, RedisDistributedCache
+from cache_sync import JsonSerializer, RedisDistributedCache
 
 distributed_cache = RedisDistributedCache(
     redis,
@@ -22,7 +22,7 @@ distributed_cache = RedisDistributedCache(
 ## Use Pydantic models
 
 ```python
-from hybrid_cache import PydanticSerializer, RedisDistributedCache
+from cache_sync import PydanticSerializer, RedisDistributedCache
 
 distributed_cache = RedisDistributedCache(
     redis,
