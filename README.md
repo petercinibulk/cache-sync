@@ -70,45 +70,6 @@ await get_user.remove_cached("123")
 await cache.stop()
 ```
 
-## Redis L2 Example
-
-```python
-from redis.asyncio import Redis
-
-from cache_sync import CacheOptions, CacheSync, RedisDistributedCache
-
-redis = Redis.from_url("redis://localhost:6379/0")
-
-cache = CacheSync(
-    distributed_cache=RedisDistributedCache(redis),
-    options=CacheOptions(ttl_seconds=60, fail_safe_seconds=300),
-)
-
-await cache.start()
-
-
-@cache.cached(lambda product_id: f"product:{product_id}")
-async def get_product(product_id: str) -> dict[str, str]:
-    return {"id": product_id}
-```
-
-For a complete walkthrough with shared values and cross-instance invalidation, see the [get started tutorial](https://petercinibulk.github.io/cache-sync/tutorials/get-started/).
-
-## Memcached L2 Example
-
-```python
-import aiomcache
-
-from cache_sync import CacheOptions, CacheSync, MemcachedDistributedCache
-
-memcache = aiomcache.Client("127.0.0.1", 11211)
-
-cache = CacheSync(
-    distributed_cache=MemcachedDistributedCache(memcache),
-    options=CacheOptions(ttl_seconds=60, fail_safe_seconds=300),
-)
-```
-
 ## Project
 
 - License: MIT
