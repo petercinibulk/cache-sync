@@ -25,20 +25,12 @@ uv add async-hybrid-cache
 Install optional providers only when your application uses them:
 
 ```bash
-<<<<<<< HEAD
-uv add "async-hybrid-cache[redis]"
-uv add "async-hybrid-cache[rabbitmq]"
-uv add "async-hybrid-cache[kafka]"
-uv add "async-hybrid-cache[postgres]"
-uv add "async-hybrid-cache[all]"
-=======
 uv add "cache-sync[redis]"
 uv add "cache-sync[memcache]"
 uv add "cache-sync[rabbitmq]"
 uv add "cache-sync[kafka]"
 uv add "cache-sync[postgres]"
 uv add "cache-sync[all]"
->>>>>>> e298429 (feat: add memcache distributed cache support (#7))
 ```
 
 | Extra | Installs | Use when |
@@ -78,33 +70,6 @@ await get_user.remove_cached("123")
 await cache.stop()
 ```
 
-<<<<<<< HEAD
-## Redis L2 Example
-
-```python
-from redis.asyncio import Redis
-
-from async_hybrid_cache import CacheOptions, AsyncHybridCache, RedisDistributedCache
-
-redis = Redis.from_url("redis://localhost:6379/0")
-
-cache = AsyncHybridCache(
-    distributed_cache=RedisDistributedCache(redis),
-    options=CacheOptions(ttl_seconds=60, fail_safe_seconds=300),
-)
-
-await cache.start()
-
-
-@cache.cached(lambda product_id: f"product:{product_id}")
-async def get_product(product_id: str) -> dict[str, str]:
-    return {"id": product_id}
-```
-
-For a complete walkthrough with shared values and cross-instance invalidation, see the [get started tutorial](https://petercinibulk.github.io/async-hybrid-cache/tutorials/get-started/).
-
-=======
->>>>>>> e298429 (feat: add memcache distributed cache support (#7))
 ## Project
 
 - License: MIT
