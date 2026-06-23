@@ -27,6 +27,29 @@ await get_user.remove_cached("123")
 
 Use this when you decorated the read path and want to invalidate using the same arguments.
 
+## Invalidate from inside application functions
+
+You can invalidate cached data from inside any async function by calling the cache
+or decorated function helper:
+
+```python
+@cache.cached(lambda user_id: f"user:{user_id}")
+async def get_user(user_id: str) -> dict[str, str]:
+    ...
+
+
+async def update_user(user_id: str, data: dict[str, str]) -> None:
+    await save_user(user_id, data)
+    await get_user.remove_cached(user_id)
+```
+
+This is most useful from write paths that change the source data.
+
+Avoid using `remove_cached()` inside the same cached function to keep that
+function's current return value out of the cache. The decorator stores the
+function result after the function returns, so removing the key during the
+function body is followed by caching the returned value.
+
 ## Clear local memory and peer instances
 
 ```python

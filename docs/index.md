@@ -11,6 +11,33 @@ flowchart LR
     Bus -. remove stale local keys .-> Peers["Other app instances"]
 ```
 
+## Quick Start
+
+```python
+from cache_sync import CacheOptions, CacheSync
+
+cache = CacheSync(
+    options=CacheOptions(
+        ttl_seconds=60,
+        fail_safe_seconds=300,
+        hard_timeout_seconds=5,
+        jitter_seconds=5,
+    ),
+)
+
+await cache.start()
+
+
+@cache.cached(lambda user_id: f"user:{user_id}")
+async def get_user(user_id: str) -> dict[str, str]:
+    return {"id": user_id, "name": "Peter"}
+
+
+user = await get_user("123")
+await get_user.remove_cached("123")
+await cache.stop()
+```
+
 ## Choose your path
 
 <div class="grid cards" markdown>
@@ -42,8 +69,6 @@ flowchart LR
 </div>
 
 ## Documentation map
-
-This site follows the Diataxis documentation model:
 
 - **Tutorials** take you through a successful first result.
 - **How-to guides** solve a specific task in your application.

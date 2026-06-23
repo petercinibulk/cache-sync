@@ -9,7 +9,7 @@ edit_uri = "edit/main/docs/"
 copyright = "Copyright &copy; 2026 The authors"
 
 nav = [
-  { "Cache-Sync" = "index.md" },
+  { "Home" = "index.md" },
   { "Tutorials" = [
     { "Overview" = "tutorials/index.md" },
     { "Get started" = "tutorials/get-started.md" },
@@ -19,6 +19,7 @@ nav = [
     { "Install optional providers" = "how-to/install-providers.md" },
     { "Configure cache policy" = "how-to/configure-cache-policy.md" },
     { "Use cached functions" = "how-to/use-cached-functions.md" },
+    { "Use with FastAPI" = "how-to/use-with-fastapi.md" },
     { "Invalidate cached data" = "how-to/invalidate-data.md" },
     { "Choose an invalidation bus" = "how-to/choose-invalidation-bus.md" },
   ] },
