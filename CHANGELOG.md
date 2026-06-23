@@ -1,6 +1,18 @@
 # Changelog
 
-## [0.3.1](https://github.com/petercinibulk/async-hybrid-cache/compare/async-hybrid-cache-v0.3.0...async-hybrid-cache-v0.3.1) (2026-06-22)
+## [0.4.0](https://github.com/petercinibulk/cache-sync/compare/cache-sync-v0.3.1...cache-sync-v0.4.0) (2026-06-23)
+
+
+### Features
+
+* add max_keys cache option ([#5](https://github.com/petercinibulk/cache-sync/issues/5)) ([cf87594](https://github.com/petercinibulk/cache-sync/commit/cf875948d042135fadd9796a387f181412b83dae))
+
+
+### Documentation
+
+* add fastapi usage ([36930b8](https://github.com/petercinibulk/cache-sync/commit/36930b8fec0a7d0e185edd2216d658b0c014d158))
+
+## [0.3.1](https://github.com/petercinibulk/cache-sync/compare/cache-sync-v0.3.0...cache-sync-v0.3.1) (2026-06-22)
 
 
 ### Bug Fixes
