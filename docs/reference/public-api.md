@@ -14,7 +14,7 @@ from cache_sync import CacheOptions, CacheSync
 | `CacheOptions` | Configures TTL, stale reads, timeouts, jitter, and caching of `None` values. |
 | `CacheSync.cached` | Decorates an async function and adds cache lookup, set, and removal behavior. |
 | `CachedFunction` | Wrapper for decorated functions with `remove_cached` and `cache_key` helpers. |
-| `DistributedCache` | Protocol implemented by shared cache providers such as Redis. |
+| `DistributedCache` | Protocol implemented by shared cache providers such as Redis and Memcached. |
 
 ## Invalidation
 
@@ -34,6 +34,7 @@ Provider classes are lazily imported so optional dependencies are only required 
 | --- | --- | --- |
 | `RedisDistributedCache` | `redis` | Stores shared cached values in Redis. |
 | `RedisStreamsInvalidationBus` | `redis` | Publishes invalidations through Redis Streams. |
+| `MemcachedDistributedCache` | `memcache` | Stores shared cached values in Memcached. |
 | `RabbitMQInvalidationBus` | `rabbitmq` | Publishes invalidations through a RabbitMQ fanout exchange. |
 | `KafkaInvalidationBus` | `kafka` | Publishes invalidations through a Kafka topic. |
 | `PostgresNotifyInvalidationBus` | `postgres` | Publishes invalidations through PostgreSQL `LISTEN`/`NOTIFY`. |
