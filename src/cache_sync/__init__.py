@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Any
 
-from cache_sync.core import CacheOptions, CacheSync
+from cache_sync.core import CacheOptions, CacheSync, ScopedCache
 from cache_sync.decorators import CachedFunction
 from cache_sync.distributed_cache import DistributedCache
 from cache_sync.invalidation import (
@@ -45,6 +45,7 @@ __all__ = [
     "RabbitMQInvalidationBus",
     "RedisDistributedCache",
     "RedisStreamsInvalidationBus",
+    "ScopedCache",
     "Serializer",
     "TransportInvalidationBus",
 ]

@@ -58,15 +58,15 @@ class PostgresNotifyInvalidationBus:
         self._remove_local = None
         self._clear_local = None
 
-    async def invalidate(self, key: str) -> None:
-        """Publish a key-removal notification."""
+    async def invalidate(self, key: str, *, scope: str) -> None:
+        """Publish a scoped key-removal notification."""
 
-        await self._publish(InvalidationMessage.remove(key))
+        await self._publish(InvalidationMessage.remove(key, scope=scope))
 
-    async def clear(self) -> None:
-        """Publish a clear-all notification."""
+    async def clear(self, *, scope: str | None = None) -> None:
+        """Publish a clear notification."""
 
-        await self._publish(InvalidationMessage.clear())
+        await self._publish(InvalidationMessage.clear(scope=scope))
 
     async def _publish(self, message: InvalidationMessage) -> None:
         await self._connection.execute(
@@ -89,16 +89,16 @@ class PostgresNotifyInvalidationBus:
             self._apply_message(message)
 
     def _apply_message(self, message: InvalidationMessage) -> None:
-        if message.action == "remove" and message.key is not None:
+        if message.action == "remove" and message.key is not None and message.scope is not None:
             remove_local = self._remove_local
             if remove_local is not None:
-                remove_local(message.key)
+                remove_local(message.key, message.scope)
             return
 
         if message.action == "clear":
             clear_local = self._clear_local
             if clear_local is not None:
-                clear_local()
+                clear_local(message.scope)
 
     def _encode_message(self, message: InvalidationMessage) -> str:
         payload: dict[str, str] = {
@@ -108,6 +108,9 @@ class PostgresNotifyInvalidationBus:
 
         if message.key is not None:
             payload["key"] = message.key
+
+        if message.scope is not None:
+            payload["scope"] = message.scope
 
         return json.dumps(payload, separators=(",", ":"))
 
@@ -120,10 +123,14 @@ class PostgresNotifyInvalidationBus:
         if not isinstance(data, dict) or data.get("source_id") == self._source_id:
             return None
 
+        scope = data.get("scope")
+
         if data.get("action") == "remove" and isinstance(data.get("key"), str):
-            return InvalidationMessage.remove(data["key"])
+            if isinstance(scope, str):
+                return InvalidationMessage.remove(data["key"], scope=scope)
+            return None
 
         if data.get("action") == "clear":
-            return InvalidationMessage.clear()
+            return InvalidationMessage.clear(scope=scope if isinstance(scope, str) else None)
 
         return None

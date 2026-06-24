@@ -99,9 +99,9 @@ async def test_rabbitmq_invalidation_bus_declares_fanout_queue_and_publishes(
     connection = FakeConnection()
     bus = RabbitMQInvalidationBus(connection, exchange_name="invalidations", node_name="node")
 
-    await bus.start(remove_local=lambda key: None, clear_local=lambda: None)
-    await bus.invalidate("user:1")
-    await bus.clear()
+    await bus.start(remove_local=lambda key, scope: None, clear_local=lambda scope: None)
+    await bus.invalidate("user:1", scope="users")
+    await bus.clear(scope="users")
 
     channel = connection.channel_instance
     assert channel.declared_exchange == ("invalidations", "fanout")
@@ -118,10 +118,12 @@ async def test_rabbitmq_invalidation_bus_declares_fanout_queue_and_publishes(
         "action": "remove",
         "source_id": bus._source_id,
         "key": "user:1",
+        "scope": "users",
     }
     assert json.loads(clear_message.body) == {
         "action": "clear",
         "source_id": bus._source_id,
+        "scope": "users",
     }
 
 
@@ -130,28 +132,36 @@ async def test_rabbitmq_invalidation_bus_applies_remote_messages_and_ignores_sel
 ) -> None:
     connection = FakeConnection()
     bus = RabbitMQInvalidationBus(connection, node_name="node")
-    removed: list[str] = []
-    clear_count = 0
+    removed: list[tuple[str, str]] = []
+    cleared: list[str | None] = []
 
-    def clear_local() -> None:
-        nonlocal clear_count
-        clear_count += 1
-
-    await bus.start(remove_local=removed.append, clear_local=clear_local)
+    await bus.start(
+        remove_local=lambda key, scope: removed.append((key, scope)),
+        clear_local=cleared.append,
+    )
     consumer = connection.channel_instance.queue.consumer
     assert consumer is not None
 
-    await consumer(FakeIncomingMessage(b'{"action":"remove","source_id":"remote","key":"user:1"}'))
-    await consumer(FakeIncomingMessage(b'{"action":"clear","source_id":"remote"}'))
+    await consumer(
+        FakeIncomingMessage(b'{"action":"remove","source_id":"remote","key":"user:1","scope":"users"}')
+    )
+    await consumer(FakeIncomingMessage(b'{"action":"clear","source_id":"remote","scope":"users"}'))
     await consumer(
         FakeIncomingMessage(
-            json.dumps({"action": "remove", "source_id": bus._source_id, "key": "self"}).encode()
+            json.dumps(
+                {
+                    "action": "remove",
+                    "source_id": bus._source_id,
+                    "key": "self",
+                    "scope": "users",
+                }
+            ).encode()
         )
     )
     await consumer(FakeIncomingMessage(b"not-json"))
 
-    assert removed == ["user:1"]
-    assert clear_count == 1
+    assert removed == [("user:1", "users")]
+    assert cleared == ["users"]
 
     await bus.stop()
 

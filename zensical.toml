@@ -13,6 +13,8 @@ nav = [
   { "Tutorials" = [
     { "Overview" = "tutorials/index.md" },
     { "Get started" = "tutorials/get-started.md" },
+    { "Use cache scopes" = "tutorials/use-cache-scopes.md" },
+    { "Use with FastAPI" = "tutorials/use-with-fastapi.md" },
   ] },
   { "How-to guides" = [
     { "Overview" = "how-to/index.md" },

@@ -19,6 +19,14 @@ await cache.remove("user:123")
 
 This removes the key from local memory, deletes it from distributed storage when configured, and publishes an invalidation message when an invalidation bus is configured.
 
+For manual scoped caches, remove through the scope:
+
+```python
+users = cache.scope("users")
+
+await users.remove("user:123")
+```
+
 ## Remove the key for a cached function call
 
 ```python
@@ -58,11 +66,24 @@ await cache.clear()
 
 `clear()` clears the current process and publishes a clear message to peer instances. It does not delete every key from a distributed cache.
 
+To clear one manual scope locally and on peer instances:
+
+```python
+await users.clear()
+```
+
 ## Remove only this process's local copy
 
 ```python
 cache.remove_local("user:123")
 cache.clear_memory()
+```
+
+Scoped local-only operations are also available:
+
+```python
+users.remove_local("user:123")
+users.clear_memory()
 ```
 
 Use local-only operations for application-specific recovery paths where you do not want to notify other instances.

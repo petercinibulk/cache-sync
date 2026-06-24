@@ -10,8 +10,8 @@ from cache_sync.invalidation import ClearLocal, RemoveLocal
 
 class RecordingInvalidationBus:
     def __init__(self) -> None:
-        self.invalidated: list[str] = []
-        self.clear_count = 0
+        self.invalidated: list[tuple[str, str]] = []
+        self.cleared: list[str | None] = []
         self.remove_local: RemoveLocal | None = None
         self.clear_local: ClearLocal | None = None
 
@@ -28,15 +28,15 @@ class RecordingInvalidationBus:
         self.remove_local = None
         self.clear_local = None
 
-    async def invalidate(self, key: str) -> None:
-        self.invalidated.append(key)
+    async def invalidate(self, key: str, *, scope: str) -> None:
+        self.invalidated.append((key, scope))
 
-    async def clear(self) -> None:
-        self.clear_count += 1
+    async def clear(self, *, scope: str | None = None) -> None:
+        self.cleared.append(scope)
 
-    def emit_remove(self, key: str) -> None:
+    def emit_remove(self, key: str, *, scope: str = "__default__") -> None:
         if self.remove_local is not None:
-            self.remove_local(key)
+            self.remove_local(key, scope)
 
 
 class RecordingDistributedCache:
@@ -158,14 +158,14 @@ async def test_invalidation_bus_and_distributed_cache_are_independent() -> None:
 
     await cache.set("key", "value")
 
-    assert distributed_cache.values == {"key": "value"}
-    assert bus.invalidated == ["key"]
+    assert distributed_cache.values == {"11:__default__key": "value"}
+    assert bus.invalidated == [("key", "__default__")]
 
     await cache.remove("key")
 
     assert distributed_cache.values == {}
-    assert distributed_cache.deleted == ["key"]
-    assert bus.invalidated == ["key", "key"]
+    assert distributed_cache.deleted == ["11:__default__key"]
+    assert bus.invalidated == [("key", "__default__"), ("key", "__default__")]
 
 
 @pytest.mark.asyncio
@@ -287,31 +287,52 @@ async def test_cache_policy_overrides_inherit_unsupplied_constructor_defaults() 
 
 
 @pytest.mark.asyncio
-async def test_max_keys_removes_oldest_cached_key() -> None:
-    cache = CacheSync(options=CacheOptions(ttl_seconds=60, max_keys=2))
+async def test_lru_max_keys_removes_least_recently_used_key() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=2))
 
     await cache.set("first", "one")
     await cache.set("second", "two")
     await cache.set("third", "three")
 
-    assert list(cache._memory) == ["second", "third"]
+    assert list(cache._memory["__default__"]) == ["second", "third"]
 
 
 @pytest.mark.asyncio
-async def test_max_keys_does_not_remove_key_when_value_is_refreshed() -> None:
-    cache = CacheSync(options=CacheOptions(ttl_seconds=60, max_keys=2))
+async def test_lru_max_keys_treats_fresh_read_as_recent_use() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=2))
+    calls = 0
+
+    async def factory() -> str:
+        nonlocal calls
+        calls += 1
+        return f"value-{calls}"
+
+    await cache.set("first", "one")
+    await cache.set("second", "two")
+
+    assert await cache.get_or_set("first", factory) == "one"
+
+    await cache.set("third", "three")
+
+    assert list(cache._memory["__default__"]) == ["first", "third"]
+    assert calls == 0
+
+
+@pytest.mark.asyncio
+async def test_lru_max_keys_treats_refreshed_key_as_recent_use() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=2))
 
     await cache.set("first", "one")
     await cache.set("second", "two")
     await cache.set("first", "updated")
 
-    assert list(cache._memory) == ["first", "second"]
-    assert cache._memory["first"].value == "updated"
+    assert list(cache._memory["__default__"]) == ["second", "first"]
+    assert cache._memory["__default__"]["first"].value == "updated"
 
 
 @pytest.mark.asyncio
-async def test_max_keys_composes_with_decorator_and_ttl() -> None:
-    cache = CacheSync(options=CacheOptions(ttl_seconds=60, max_keys=2))
+async def test_lru_max_keys_composes_with_decorator_and_ttl() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=2))
     calls = 0
 
     @cache.cached(lambda key: key, options=CacheOptions(ttl_seconds=0.01))
@@ -323,23 +344,129 @@ async def test_max_keys_composes_with_decorator_and_ttl() -> None:
     assert await load("first") == "first-1"
     assert await load("second") == "second-2"
     assert await load("third") == "third-3"
-    assert list(cache._memory) == ["second", "third"]
+    memory = next(iter(cache._memory.values()))
+    assert list(memory) == ["second", "third"]
 
     await asyncio.sleep(0.02)
 
     assert await load("second") == "second-4"
-    assert list(cache._memory) == ["second", "third"]
+    assert list(memory) == ["third", "second"]
 
 
 @pytest.mark.asyncio
-async def test_max_keys_override_can_raise_or_disable_constructor_limit() -> None:
-    cache = CacheSync(options=CacheOptions(ttl_seconds=60, max_keys=1))
+async def test_lru_max_keys_zero_clears_local_memory() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=2))
 
     await cache.set("first", "one")
-    await cache.set("second", "two", options=CacheOptions(max_keys=2))
+    await cache.set("second", "two", options=CacheOptions(lru_max_keys=0))
 
-    assert list(cache._memory) == ["first", "second"]
+    assert cache._memory["__default__"] == {}
 
-    await cache.set("third", "three", options=CacheOptions(max_keys=None))
 
-    assert list(cache._memory) == ["first", "second", "third"]
+@pytest.mark.asyncio
+async def test_lru_max_keys_override_can_raise_or_disable_constructor_limit() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=1))
+
+    await cache.set("first", "one")
+    await cache.set("second", "two", options=CacheOptions(lru_max_keys=2))
+
+    assert list(cache._memory["__default__"]) == ["first", "second"]
+
+    await cache.set("third", "three", options=CacheOptions(lru_max_keys=None))
+
+    assert list(cache._memory["__default__"]) == ["first", "second", "third"]
+
+
+@pytest.mark.asyncio
+async def test_manual_scope_has_independent_lru_limit_and_operations() -> None:
+    bus = RecordingInvalidationBus()
+    cache = CacheSync(invalidation_bus=bus, options=CacheOptions(ttl_seconds=60))
+    users = cache.scope("users", options=CacheOptions(lru_max_keys=2))
+    products = cache.scope("products", options=CacheOptions(lru_max_keys=1))
+
+    await users.set("1", "ada")
+    await users.set("2", "grace")
+    await users.set("3", "katherine")
+    await products.set("1", "keyboard")
+    await products.set("2", "monitor")
+
+    assert list(cache._memory["users"]) == ["2", "3"]
+    assert list(cache._memory["products"]) == ["2"]
+    assert await users.get("2") == "grace"
+
+    await users.remove("2")
+
+    assert await users.get("2") is None
+    assert list(cache._memory["users"]) == ["3"]
+    assert list(cache._memory["products"]) == ["2"]
+    assert bus.invalidated[-1] == ("2", "users")
+
+    await products.clear()
+
+    assert "products" not in cache._memory
+    assert cache._memory["users"]
+    assert bus.cleared == ["products"]
+
+
+@pytest.mark.asyncio
+async def test_manual_scope_options_inherit_cache_defaults() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=0.01, fail_safe_seconds=60))
+    users = cache.scope("users", options=CacheOptions(lru_max_keys=2))
+
+    await users.set("1", "ada")
+    await asyncio.sleep(0.02)
+
+    assert await users.get("1") is None
+
+
+@pytest.mark.asyncio
+async def test_cached_functions_get_independent_default_lru_scopes() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=1))
+    user_calls = 0
+    product_calls = 0
+
+    @cache.cached(lambda key: key)
+    async def load_user(key: str) -> str:
+        nonlocal user_calls
+        user_calls += 1
+        return f"user-{key}-{user_calls}"
+
+    @cache.cached(lambda key: key)
+    async def load_product(key: str) -> str:
+        nonlocal product_calls
+        product_calls += 1
+        return f"product-{key}-{product_calls}"
+
+    assert await load_user("1") == "user-1-1"
+    assert await load_product("1") == "product-1-1"
+    assert await load_user("2") == "user-2-2"
+    assert await load_product("1") == "product-1-1"
+
+    assert user_calls == 2
+    assert product_calls == 1
+    assert len(cache._memory) == 2
+
+
+@pytest.mark.asyncio
+async def test_cached_functions_can_share_an_explicit_scope() -> None:
+    cache = CacheSync(options=CacheOptions(ttl_seconds=60, lru_max_keys=1))
+    user_calls = 0
+    product_calls = 0
+
+    @cache.cached(lambda key: f"user:{key}", scope="shared")
+    async def load_user(key: str) -> str:
+        nonlocal user_calls
+        user_calls += 1
+        return f"user-{key}-{user_calls}"
+
+    @cache.cached(lambda key: f"product:{key}", scope="shared")
+    async def load_product(key: str) -> str:
+        nonlocal product_calls
+        product_calls += 1
+        return f"product-{key}-{product_calls}"
+
+    assert await load_user("1") == "user-1-1"
+    assert await load_product("1") == "product-1-1"
+    assert await load_user("1") == "user-1-2"
+
+    assert list(cache._memory["shared"]) == ["user:1"]

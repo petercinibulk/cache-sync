@@ -80,9 +80,9 @@ async def test_kafka_invalidation_bus_starts_clients_and_publishes(
         node_name="node",
     )
 
-    await bus.start(remove_local=lambda key: None, clear_local=lambda: None)
-    await bus.invalidate("user:1")
-    await bus.clear()
+    await bus.start(remove_local=lambda key, scope: None, clear_local=lambda scope: None)
+    await bus.invalidate("user:1", scope="users")
+    await bus.clear(scope="users")
     await bus.stop()
 
     producer = FakeProducer.instances[0]
@@ -102,10 +102,12 @@ async def test_kafka_invalidation_bus_starts_clients_and_publishes(
         "action": "remove",
         "source_id": bus._source_id,
         "key": "user:1",
+        "scope": "users",
     }
     assert json.loads(producer.sent[1][1]) == {
         "action": "clear",
         "source_id": bus._source_id,
+        "scope": "users",
     }
 
 
@@ -115,7 +117,7 @@ async def test_kafka_invalidation_bus_uses_explicit_group_id(fake_aiokafka: None
         group_id="shared-group",
     )
 
-    await bus.start(remove_local=lambda key: None, clear_local=lambda: None)
+    await bus.start(remove_local=lambda key, scope: None, clear_local=lambda scope: None)
     await bus.stop()
 
     assert FakeConsumer.instances[0].kwargs["group_id"] == "shared-group"
@@ -125,28 +127,36 @@ async def test_kafka_invalidation_bus_applies_remote_messages_and_ignores_malfor
     fake_aiokafka: None,
 ) -> None:
     bus = KafkaInvalidationBus(bootstrap_servers="localhost:9092", topic="invalidations")
-    removed: list[str] = []
-    clear_count = 0
+    removed: list[tuple[str, str]] = []
+    cleared: list[str | None] = []
 
-    def clear_local() -> None:
-        nonlocal clear_count
-        clear_count += 1
-
-    await bus.start(remove_local=removed.append, clear_local=clear_local)
+    await bus.start(
+        remove_local=lambda key, scope: removed.append((key, scope)),
+        clear_local=cleared.append,
+    )
     consumer = FakeConsumer.instances[0]
     await consumer.records.put(
-        FakeRecord(b'{"action":"remove","source_id":"remote","key":"user:1"}')
+        FakeRecord(b'{"action":"remove","source_id":"remote","key":"user:1","scope":"users"}')
     )
-    await consumer.records.put(FakeRecord(b'{"action":"clear","source_id":"remote"}'))
+    await consumer.records.put(
+        FakeRecord(b'{"action":"clear","source_id":"remote","scope":"users"}')
+    )
     await consumer.records.put(
         FakeRecord(
-            json.dumps({"action": "remove", "source_id": bus._source_id, "key": "self"}).encode()
+            json.dumps(
+                {
+                    "action": "remove",
+                    "source_id": bus._source_id,
+                    "key": "self",
+                    "scope": "users",
+                }
+            ).encode()
         )
     )
     await consumer.records.put(FakeRecord(b"not-json"))
     await asyncio.sleep(0)
 
-    assert removed == ["user:1"]
-    assert clear_count == 1
+    assert removed == [("user:1", "users")]
+    assert cleared == ["users"]
 
     await bus.stop()

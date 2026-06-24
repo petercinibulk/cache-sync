@@ -22,11 +22,13 @@ class CachedFunction(Generic[P, T]):
         func: Callable[P, Awaitable[T]],
         key: str | Callable[..., str] | None,
         options: CacheOptions | None,
+        scope: str | None,
     ) -> None:
         self._cache = cache
         self._func = func
         self._key = key
         self._options = options
+        self._scope = scope or default_cache_scope(func)
 
     async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         """Return the cached result for this call or invoke the wrapped function."""
@@ -34,13 +36,14 @@ class CachedFunction(Generic[P, T]):
         return await self._cache.get_or_set(
             self.cache_key(*args, **kwargs),
             lambda: self._func(*args, **kwargs),
+            scope=self._scope,
             options=self._options,
         )
 
     async def remove_cached(self, *args: P.args, **kwargs: P.kwargs) -> None:
         """Remove the cached value associated with this call's cache key."""
 
-        await self._cache.remove(self.cache_key(*args, **kwargs))
+        await self._cache.remove(self.cache_key(*args, **kwargs), scope=self._scope)
 
     def cache_key(self, *args: P.args, **kwargs: P.kwargs) -> str:
         """Build the cache key for the supplied function arguments."""
@@ -65,6 +68,15 @@ def default_cache_key(func: Callable[..., Awaitable[Any]], *args: Any, **kwargs:
     qualname = getattr(func, "__qualname__", type(func).__qualname__)
 
     return f"{module}.{qualname}({arguments})"
+
+
+def default_cache_scope(func: Callable[..., Awaitable[Any]]) -> str:
+    """Build the default scope for a decorated cached function."""
+
+    module = getattr(func, "__module__", type(func).__module__)
+    qualname = getattr(func, "__qualname__", type(func).__qualname__)
+
+    return f"{module}.{qualname}"
 
 
 def _stable_key_part(value: Any) -> str:

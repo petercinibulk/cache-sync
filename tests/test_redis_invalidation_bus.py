@@ -37,14 +37,16 @@ async def test_redis_streams_invalidation_bus_publishes_invalidations() -> None:
         max_length=50,
     )
 
-    await bus.invalidate("user:1")
-    await bus.clear()
+    await bus.invalidate("user:1", scope="users")
+    await bus.clear(scope="users")
 
     assert redis.added[0][0] == "invalidations"
     assert redis.added[0][1]["action"] == "remove"
     assert redis.added[0][1]["key"] == "user:1"
+    assert redis.added[0][1]["scope"] == "users"
     assert redis.added[0][2:] == (50, True)
     assert redis.added[1][1]["action"] == "clear"
+    assert redis.added[1][1]["scope"] == "users"
 
 
 async def test_redis_streams_invalidation_bus_applies_remote_messages() -> None:
@@ -54,21 +56,18 @@ async def test_redis_streams_invalidation_bus_applies_remote_messages() -> None:
         stream_name="invalidations",
         node_name="node",
     )
-    removed: list[str] = []
-    clear_count = 0
+    removed: list[tuple[str, str]] = []
+    cleared: list[str | None] = []
 
-    def clear_local() -> None:
-        nonlocal clear_count
-        clear_count += 1
-
-    bus._remove_local = removed.append
-    bus._clear_local = clear_local
+    bus._remove_local = lambda key, scope: removed.append((key, scope))
+    bus._clear_local = cleared.append
     await bus._process_message(
         "1-0",
         {
             "action": "remove",
             "source_id": "another-node",
             "key": "user:1",
+            "scope": "users",
         },
     )
     await bus._process_message(
@@ -76,11 +75,12 @@ async def test_redis_streams_invalidation_bus_applies_remote_messages() -> None:
         {
             "action": "clear",
             "source_id": "another-node",
+            "scope": "users",
         },
     )
 
-    assert removed == ["user:1"]
-    assert clear_count == 1
+    assert removed == [("user:1", "users")]
+    assert cleared == ["users"]
     assert redis.acked == [
         ("invalidations", "cache-sync-node:node", "1-0"),
         ("invalidations", "cache-sync-node:node", "2-0"),
