@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from cache_sync import PostgresNotifyInvalidationBus
+from async_hybrid_cache import PostgresNotifyInvalidationBus
 
 
 class FakeConnection:
@@ -25,9 +25,9 @@ async def test_postgres_notify_invalidation_bus_publishes_and_manages_listener()
     connection = FakeConnection()
     bus = PostgresNotifyInvalidationBus(connection, channel="invalidations", node_name="node")
 
-    await bus.start(remove_local=lambda key: None, clear_local=lambda: None)
-    await bus.invalidate("user:1")
-    await bus.clear()
+    await bus.start(remove_local=lambda key, scope: None, clear_local=lambda scope: None)
+    await bus.invalidate("user:1", scope="users")
+    await bus.clear(scope="users")
     await bus.stop()
 
     assert connection.listeners == [("invalidations", bus._handle_notification)]
@@ -38,38 +38,51 @@ async def test_postgres_notify_invalidation_bus_publishes_and_manages_listener()
         "action": "remove",
         "source_id": bus._source_id,
         "key": "user:1",
+        "scope": "users",
     }
     assert json.loads(connection.executed[1][2]) == {
         "action": "clear",
         "source_id": bus._source_id,
+        "scope": "users",
     }
 
 
 async def test_postgres_notify_invalidation_bus_applies_remote_messages_and_ignores_self() -> None:
     connection = FakeConnection()
     bus = PostgresNotifyInvalidationBus(connection, channel="invalidations", node_name="node")
-    removed: list[str] = []
-    clear_count = 0
+    removed: list[tuple[str, str]] = []
+    cleared: list[str | None] = []
 
-    def clear_local() -> None:
-        nonlocal clear_count
-        clear_count += 1
-
-    await bus.start(remove_local=removed.append, clear_local=clear_local)
-    bus._handle_notification(
-        None,
-        1,
-        "invalidations",
-        '{"action":"remove","source_id":"remote","key":"user:1"}',
+    await bus.start(
+        remove_local=lambda key, scope: removed.append((key, scope)),
+        clear_local=cleared.append,
     )
-    bus._handle_notification(None, 1, "invalidations", '{"action":"clear","source_id":"remote"}')
     bus._handle_notification(
         None,
         1,
         "invalidations",
-        json.dumps({"action": "remove", "source_id": bus._source_id, "key": "self"}),
+        '{"action":"remove","source_id":"remote","key":"user:1","scope":"users"}',
+    )
+    bus._handle_notification(
+        None,
+        1,
+        "invalidations",
+        '{"action":"clear","source_id":"remote","scope":"users"}',
+    )
+    bus._handle_notification(
+        None,
+        1,
+        "invalidations",
+        json.dumps(
+            {
+                "action": "remove",
+                "source_id": bus._source_id,
+                "key": "self",
+                "scope": "users",
+            }
+        ),
     )
     bus._handle_notification(None, 1, "invalidations", "not-json")
 
-    assert removed == ["user:1"]
-    assert clear_count == 1
+    assert removed == [("user:1", "users")]
+    assert cleared == ["users"]

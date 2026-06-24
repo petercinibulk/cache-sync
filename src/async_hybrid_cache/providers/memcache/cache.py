@@ -5,11 +5,11 @@ import re
 
 from aiomcache import Client
 
-from cache_sync.serializers import PickleSerializer, Serializer
+from async_hybrid_cache.serializers import PickleSerializer, Serializer
 
 _INVALID_MEMCACHE_KEY = re.compile(rb"[\x00-\x20\x7f]")
 _MAX_MEMCACHE_KEY_BYTES = 250
-_HASHED_KEY_PREFIX = b"cache-sync:sha256:"
+_HASHED_KEY_PREFIX = b"async-hybrid-cache:sha256:"
 
 
 class MemcachedDistributedCache:
@@ -19,7 +19,7 @@ class MemcachedDistributedCache:
         self,
         client: Client,
         *,
-        prefix: str = "cache-sync:",
+        prefix: str = "async-hybrid-cache:",
         serializer: Serializer | None = None,
     ) -> None:
         """Create a Memcached distributed cache with an optional key prefix."""

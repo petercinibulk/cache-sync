@@ -13,5 +13,5 @@
 Install extras with your package manager:
 
 ```bash
-uv add "cache-sync[redis]"
+uv add "async-hybrid-cache[redis]"
 ```

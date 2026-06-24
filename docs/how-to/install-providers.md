@@ -1,11 +1,11 @@
 # Install Optional Providers
 
-`Cache-Sync` has no required runtime dependencies. Install only the providers your application uses.
+`Async Hybrid Cache` has no required runtime dependencies. Install only the providers your application uses.
 
 ## Redis distributed cache and Redis Streams invalidation
 
 ```bash
-uv add "cache-sync[redis]"
+uv add "async-hybrid-cache[redis]"
 ```
 
 Use this when Redis should store shared cached values, carry invalidation messages, or both.
@@ -13,7 +13,7 @@ Use this when Redis should store shared cached values, carry invalidation messag
 ## Memcached distributed cache
 
 ```bash
-uv add "cache-sync[memcache]"
+uv add "async-hybrid-cache[memcache]"
 ```
 
 Use this when Memcached should store shared cached values. Memcached does not provide an invalidation bus, so pair it with Redis Streams, RabbitMQ, Kafka, PostgreSQL, or manual invalidation when multiple application instances need coordinated local cache removal.
@@ -21,7 +21,7 @@ Use this when Memcached should store shared cached values. Memcached does not pr
 ## RabbitMQ invalidation
 
 ```bash
-uv add "cache-sync[rabbitmq]"
+uv add "async-hybrid-cache[rabbitmq]"
 ```
 
 Use this when your application already has RabbitMQ and only needs invalidation messages between instances.
@@ -29,7 +29,7 @@ Use this when your application already has RabbitMQ and only needs invalidation 
 ## Kafka invalidation
 
 ```bash
-uv add "cache-sync[kafka]"
+uv add "async-hybrid-cache[kafka]"
 ```
 
 Use this when Kafka is already part of your platform and every cache instance must receive each invalidation.
@@ -37,7 +37,7 @@ Use this when Kafka is already part of your platform and every cache instance mu
 ## PostgreSQL notification invalidation
 
 ```bash
-uv add "cache-sync[postgres]"
+uv add "async-hybrid-cache[postgres]"
 ```
 
 Use this for PostgreSQL `LISTEN`/`NOTIFY` invalidation when you do not want to run a separate message broker.
@@ -45,7 +45,7 @@ Use this for PostgreSQL `LISTEN`/`NOTIFY` invalidation when you do not want to r
 ## All optional providers
 
 ```bash
-uv add "cache-sync[all]"
+uv add "async-hybrid-cache[all]"
 ```
 
 Use this for experiments or shared application templates. Production apps usually install only the extras they need.

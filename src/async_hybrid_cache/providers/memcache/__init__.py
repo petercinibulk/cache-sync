@@ -1,6 +1,6 @@
 """Memcache provider exports."""
 
-from cache_sync.providers.memcache.cache import MemcachedDistributedCache
+from async_hybrid_cache.providers.memcache.cache import MemcachedDistributedCache
 
 __all__ = [
     "MemcachedDistributedCache",

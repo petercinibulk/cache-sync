@@ -11,7 +11,7 @@ from redis.asyncio import Redis
 from redis.exceptions import ResponseError
 from redis.typing import EncodableT, FieldT
 
-from cache_sync.invalidation import (
+from async_hybrid_cache.invalidation import (
     ClearLocal,
     InvalidationAction,
     InvalidationMessage,
@@ -30,7 +30,7 @@ class RedisStreamsInvalidationBus:
         self,
         redis: Redis,
         *,
-        stream_name: str = "cache-sync:invalidations",
+        stream_name: str = "async-hybrid-cache:invalidations",
         node_name: str | None = None,
         max_length: int = 10_000,
     ) -> None:
@@ -40,7 +40,7 @@ class RedisStreamsInvalidationBus:
         self._stream_name = stream_name
         self._source_id = str(uuid.uuid4())
         self._node_name = node_name or f"{socket.gethostname()}-{self._source_id}"
-        self._group_name = f"cache-sync-node:{self._node_name}"
+        self._group_name = f"async-hybrid-cache-node:{self._node_name}"
         self._consumer_name = self._node_name
         self._max_length = max_length
         self._remove_local: RemoveLocal | None = None
@@ -82,15 +82,15 @@ class RedisStreamsInvalidationBus:
         self._remove_local = None
         self._clear_local = None
 
-    async def invalidate(self, key: str) -> None:
-        """Publish a key-removal message to the stream."""
+    async def invalidate(self, key: str, *, scope: str) -> None:
+        """Publish a scoped key-removal message to the stream."""
 
-        await self._publish(InvalidationMessage.remove(key))
+        await self._publish(InvalidationMessage.remove(key, scope=scope))
 
-    async def clear(self) -> None:
-        """Publish a clear-all message to the stream."""
+    async def clear(self, *, scope: str | None = None) -> None:
+        """Publish a clear message to the stream."""
 
-        await self._publish(InvalidationMessage.clear())
+        await self._publish(InvalidationMessage.clear(scope=scope))
 
     async def _publish(self, message: InvalidationMessage) -> None:
         fields: dict[FieldT, EncodableT] = {
@@ -100,6 +100,9 @@ class RedisStreamsInvalidationBus:
 
         if message.key is not None:
             fields["key"] = message.key
+
+        if message.scope is not None:
+            fields["scope"] = message.scope
 
         await self._redis.xadd(
             self._stream_name,
@@ -154,28 +157,38 @@ class RedisStreamsInvalidationBus:
         )
 
     def _apply_message(self, message: InvalidationMessage) -> None:
-        if message.action == "remove" and message.key is not None:
+        if message.action == "remove" and message.key is not None and message.scope is not None:
             remove_local = self._remove_local
             if remove_local is not None:
-                remove_local(message.key)
+                remove_local(message.key, message.scope)
             return
 
         if message.action == "clear":
             clear_local = self._clear_local
             if clear_local is not None:
-                clear_local()
+                clear_local(message.scope)
 
     def _to_message(self, fields: RedisFields) -> InvalidationMessage:
         action = cast(InvalidationAction, self._get_field(fields, "action"))
+        scope = self._get_optional_field(fields, "scope")
 
-        if action == "remove":
-            return InvalidationMessage.remove(self._get_field(fields, "key"))
+        if action == "remove" and scope is not None:
+            return InvalidationMessage.remove(self._get_field(fields, "key"), scope=scope)
 
-        return InvalidationMessage.clear()
+        return InvalidationMessage.clear(scope=scope)
 
     def _get_field(self, fields: RedisFields, key: str) -> str:
         value = fields.get(key)
         if value is None:
             value = fields[key.encode("utf-8")]
+
+        return value.decode("utf-8") if isinstance(value, bytes) else value
+
+    def _get_optional_field(self, fields: RedisFields, key: str) -> str | None:
+        value = fields.get(key)
+        if value is None:
+            value = fields.get(key.encode("utf-8"))
+        if value is None:
+            return None
 
         return value.decode("utf-8") if isinstance(value, bytes) else value

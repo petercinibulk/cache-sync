@@ -4,7 +4,7 @@ from typing import cast
 
 from aiomcache import Client
 
-from cache_sync import JsonSerializer, MemcachedDistributedCache
+from async_hybrid_cache import JsonSerializer, MemcachedDistributedCache
 
 
 class FakeMemcacheClient:
@@ -46,7 +46,7 @@ async def test_memcached_distributed_cache_deletes_values() -> None:
     await cache.set("user:1", "value", ttl_seconds=60)
     await cache.delete("user:1")
 
-    assert client.deleted == [b"cache-sync:user:1"]
+    assert client.deleted == [b"async-hybrid-cache:user:1"]
     assert await cache.get("user:1") is None
 
 
@@ -59,7 +59,7 @@ async def test_memcached_distributed_cache_hashes_invalid_keys() -> None:
     await cache.set(key, "value", ttl_seconds=60)
 
     stored_key = next(iter(client.values))
-    assert stored_key.startswith(b"cache-sync:sha256:")
+    assert stored_key.startswith(b"async-hybrid-cache:sha256:")
     assert b" " not in stored_key
     assert await cache.get(key) == "value"
 
@@ -71,6 +71,6 @@ async def test_memcached_distributed_cache_hashes_invalid_prefixes() -> None:
     await cache.set("user:1", "value", ttl_seconds=60)
 
     stored_key = next(iter(client.values))
-    assert stored_key.startswith(b"cache-sync:sha256:")
+    assert stored_key.startswith(b"async-hybrid-cache:sha256:")
     assert b" " not in stored_key
     assert await cache.get("user:1") == "value"

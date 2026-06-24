@@ -14,9 +14,9 @@ Distributed cache and invalidation are independent. You can use Redis or Memcach
 
 | Provider | Default name |
 | --- | --- |
-| Redis distributed key prefix | `cache-sync:` |
-| Redis invalidation stream | `cache-sync:invalidations` |
-| Memcached distributed key prefix | `cache-sync:` |
-| RabbitMQ exchange | `cache-sync-invalidations` |
-| Kafka topic | `cache-sync-invalidations` |
-| PostgreSQL channel | `cache_sync_invalidations` |
+| Redis distributed key prefix | `async-hybrid-cache:` |
+| Redis invalidation stream | `async-hybrid-cache:invalidations` |
+| Memcached distributed key prefix | `async-hybrid-cache:` |
+| RabbitMQ exchange | `async-hybrid-cache-invalidations` |
+| Kafka topic | `async-hybrid-cache-invalidations` |
+| PostgreSQL channel | `async_hybrid_cache_invalidations` |

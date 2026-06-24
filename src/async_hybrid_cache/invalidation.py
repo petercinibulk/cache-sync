@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 type InvalidationAction = Literal["remove", "clear"]
-type RemoveLocal = Callable[[str], None]
-type ClearLocal = Callable[[], None]
+type RemoveLocal = Callable[[str, str], None]
+type ClearLocal = Callable[[str | None], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,18 +15,19 @@ class InvalidationMessage:
 
     action: InvalidationAction
     key: str | None = None
+    scope: str | None = None
 
     @classmethod
-    def remove(cls, key: str) -> InvalidationMessage:
-        """Create a message that removes one key from peer local caches."""
+    def remove(cls, key: str, *, scope: str) -> InvalidationMessage:
+        """Create a message that removes one scoped key from peer local caches."""
 
-        return cls(action="remove", key=key)
+        return cls(action="remove", key=key, scope=scope)
 
     @classmethod
-    def clear(cls) -> InvalidationMessage:
-        """Create a message that clears peer local caches."""
+    def clear(cls, *, scope: str | None = None) -> InvalidationMessage:
+        """Create a message that clears one scope or all peer local caches."""
 
-        return cls(action="clear")
+        return cls(action="clear", scope=scope)
 
 
 type InvalidationHandler = Callable[[InvalidationMessage], Awaitable[None]]
@@ -54,9 +55,9 @@ class InvalidationBus(Protocol):
 
     async def stop(self) -> None: ...
 
-    async def invalidate(self, key: str) -> None: ...
+    async def invalidate(self, key: str, *, scope: str) -> None: ...
 
-    async def clear(self) -> None: ...
+    async def clear(self, *, scope: str | None = None) -> None: ...
 
 
 class TransportInvalidationBus:
@@ -88,24 +89,24 @@ class TransportInvalidationBus:
         self._remove_local = None
         self._clear_local = None
 
-    async def invalidate(self, key: str) -> None:
-        """Publish a message instructing peers to remove one key."""
+    async def invalidate(self, key: str, *, scope: str) -> None:
+        """Publish a message instructing peers to remove one scoped key."""
 
-        await self._transport.publish(InvalidationMessage.remove(key))
+        await self._transport.publish(InvalidationMessage.remove(key, scope=scope))
 
-    async def clear(self) -> None:
-        """Publish a message instructing peers to clear local memory."""
+    async def clear(self, *, scope: str | None = None) -> None:
+        """Publish a message instructing peers to clear one scope or all local memory."""
 
-        await self._transport.publish(InvalidationMessage.clear())
+        await self._transport.publish(InvalidationMessage.clear(scope=scope))
 
     async def _handle_message(self, message: InvalidationMessage) -> None:
         remove_local = self._remove_local
         clear_local = self._clear_local
 
-        if message.action == "remove" and message.key is not None:
+        if message.action == "remove" and message.key is not None and message.scope is not None:
             if remove_local is not None:
-                remove_local(message.key)
+                remove_local(message.key, message.scope)
             return
 
         if message.action == "clear" and clear_local is not None:
-            clear_local()
+            clear_local(message.scope)

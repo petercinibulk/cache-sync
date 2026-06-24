@@ -1,4 +1,4 @@
-# cache-sync
+# async-hybrid-cache
 
 Async hybrid Python cache with in-memory L1 caching, optional Redis or Memcached L2 caching, pluggable invalidation, stampede protection, fail-safe stale values, and typed decorators.
 
@@ -14,23 +14,23 @@ Async hybrid Python cache with in-memory L1 caching, optional Redis or Memcached
 
 ## Documentation
 
-The end-user documentation is published at <https://petercinibulk.github.io/cache-sync/> and is built from [`docs/`](docs/index.md) with Zensical.
+The end-user documentation is published at <https://petercinibulk.github.io/async-hybrid-cache/> and is built from [`docs/`](docs/index.md) with Zensical.
 
 ## Install
 
 ```bash
-uv add cache-sync
+uv add async-hybrid-cache
 ```
 
 Install optional providers only when your application uses them:
 
 ```bash
-uv add "cache-sync[redis]"
-uv add "cache-sync[memcache]"
-uv add "cache-sync[rabbitmq]"
-uv add "cache-sync[kafka]"
-uv add "cache-sync[postgres]"
-uv add "cache-sync[all]"
+uv add "async-hybrid-cache[redis]"
+uv add "async-hybrid-cache[memcache]"
+uv add "async-hybrid-cache[rabbitmq]"
+uv add "async-hybrid-cache[kafka]"
+uv add "async-hybrid-cache[postgres]"
+uv add "async-hybrid-cache[all]"
 ```
 
 | Extra | Installs | Use when |
@@ -46,9 +46,9 @@ uv add "cache-sync[all]"
 ## Quick Start
 
 ```python
-from cache_sync import CacheOptions, CacheSync
+from async_hybrid_cache import CacheOptions, AsyncHybridCache
 
-cache = CacheSync(
+cache = AsyncHybridCache(
     options=CacheOptions(
         ttl_seconds=60,
         fail_safe_seconds=300,
@@ -73,5 +73,5 @@ await cache.stop()
 ## Project
 
 - License: MIT
-- Source: <https://github.com/petercinibulk/cache-sync>
-- Issues: <https://github.com/petercinibulk/cache-sync/issues>
+- Source: <https://github.com/petercinibulk/async-hybrid-cache>
+- Issues: <https://github.com/petercinibulk/async-hybrid-cache/issues>

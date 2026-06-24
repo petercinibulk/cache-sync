@@ -6,7 +6,7 @@ import uuid
 from contextlib import suppress
 from typing import Any
 
-from cache_sync.invalidation import (
+from async_hybrid_cache.invalidation import (
     ClearLocal,
     InvalidationMessage,
     RemoveLocal,
@@ -20,7 +20,7 @@ class RabbitMQInvalidationBus:
         self,
         connection: Any,
         *,
-        exchange_name: str = "cache-sync-invalidations",
+        exchange_name: str = "async-hybrid-cache-invalidations",
         node_name: str | None = None,
     ) -> None:
         """Create a RabbitMQ invalidation bus using an existing connection."""
@@ -50,7 +50,7 @@ class RabbitMQInvalidationBus:
         try:
             from aio_pika import ExchangeType
         except ImportError as ex:  # pragma: no cover - exercised only without optional deps
-            msg = "Install cache-sync with the rabbitmq dependency group to use RabbitMQ."
+            msg = "Install async-hybrid-cache with the rabbitmq dependency group to use RabbitMQ."
             raise RuntimeError(msg) from ex
 
         self._remove_local = remove_local
@@ -85,15 +85,15 @@ class RabbitMQInvalidationBus:
         self._remove_local = None
         self._clear_local = None
 
-    async def invalidate(self, key: str) -> None:
-        """Publish a key-removal message to the fanout exchange."""
+    async def invalidate(self, key: str, *, scope: str) -> None:
+        """Publish a scoped key-removal message to the fanout exchange."""
 
-        await self._publish(InvalidationMessage.remove(key))
+        await self._publish(InvalidationMessage.remove(key, scope=scope))
 
-    async def clear(self) -> None:
-        """Publish a clear-all message to the fanout exchange."""
+    async def clear(self, *, scope: str | None = None) -> None:
+        """Publish a clear message to the fanout exchange."""
 
-        await self._publish(InvalidationMessage.clear())
+        await self._publish(InvalidationMessage.clear(scope=scope))
 
     async def _publish(self, message: InvalidationMessage) -> None:
         if self._exchange is None:
@@ -103,7 +103,7 @@ class RabbitMQInvalidationBus:
         try:
             from aio_pika import Message
         except ImportError as ex:  # pragma: no cover - exercised only without optional deps
-            msg = "Install cache-sync with the rabbitmq dependency group to use RabbitMQ."
+            msg = "Install async-hybrid-cache with the rabbitmq dependency group to use RabbitMQ."
             raise RuntimeError(msg) from ex
 
         await self._exchange.publish(
@@ -125,16 +125,16 @@ class RabbitMQInvalidationBus:
             self._apply_message(message)
 
     def _apply_message(self, message: InvalidationMessage) -> None:
-        if message.action == "remove" and message.key is not None:
+        if message.action == "remove" and message.key is not None and message.scope is not None:
             remove_local = self._remove_local
             if remove_local is not None:
-                remove_local(message.key)
+                remove_local(message.key, message.scope)
             return
 
         if message.action == "clear":
             clear_local = self._clear_local
             if clear_local is not None:
-                clear_local()
+                clear_local(message.scope)
 
     def _encode_message(self, message: InvalidationMessage) -> bytes:
         payload: dict[str, str] = {
@@ -144,6 +144,9 @@ class RabbitMQInvalidationBus:
 
         if message.key is not None:
             payload["key"] = message.key
+
+        if message.scope is not None:
+            payload["scope"] = message.scope
 
         return json.dumps(payload, separators=(",", ":")).encode("utf-8")
 
@@ -159,10 +162,14 @@ class RabbitMQInvalidationBus:
         if not isinstance(data, dict) or data.get("source_id") == self._source_id:
             return None
 
+        scope = data.get("scope")
+
         if data.get("action") == "remove" and isinstance(data.get("key"), str):
-            return InvalidationMessage.remove(data["key"])
+            if isinstance(scope, str):
+                return InvalidationMessage.remove(data["key"], scope=scope)
+            return None
 
         if data.get("action") == "clear":
-            return InvalidationMessage.clear()
+            return InvalidationMessage.clear(scope=scope if isinstance(scope, str) else None)
 
         return None
